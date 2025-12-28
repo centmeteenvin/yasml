@@ -158,8 +158,20 @@
       "languageVersion": "3.5"
     },
     {
-      "name": "yasml",
+      "name": "yasml_workspace",
       "rootUri": "../",
+      "packageUri": "lib/",
+      "languageVersion": "3.6"
+    },
+    {
+      "name": "yasml",
+      "rootUri": "../yasml",
+      "packageUri": "lib/",
+      "languageVersion": "3.10"
+    },
+    {
+      "name": "yasml_example",
+      "rootUri": "../yasml_example",
       "packageUri": "lib/",
       "languageVersion": "3.10"
     }

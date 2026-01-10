@@ -13,9 +13,11 @@
     },
     {
       "name": "yasml",
-      "version": "0.0.1",
+      "version": "0.1.0",
       "dependencies": [
-        "flutter"
+        "collection",
+        "flutter",
+        "logging"
       ],
       "devDependencies": [
         "flutter_lints",
@@ -72,6 +74,16 @@
       ]
     },
     {
+      "name": "logging",
+      "version": "1.3.0",
+      "dependencies": []
+    },
+    {
+      "name": "collection",
+      "version": "1.19.1",
+      "dependencies": []
+    },
+    {
       "name": "lints",
       "version": "6.0.0",
       "dependencies": []
@@ -86,11 +98,6 @@
     {
       "name": "meta",
       "version": "1.17.0",
-      "dependencies": []
-    },
-    {
-      "name": "collection",
-      "version": "1.19.1",
       "dependencies": []
     },
     {

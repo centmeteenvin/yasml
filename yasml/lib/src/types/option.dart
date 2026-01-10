@@ -12,6 +12,11 @@ sealed class Option<T> {
     }
     return defaultValue;
   }
+
+  T get requireValue {
+    assert(this is OptionValue, 'option.requireValue must have a value');
+    return (this as OptionValue).value;
+  }
 }
 
 @immutable

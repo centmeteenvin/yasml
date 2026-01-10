@@ -1,40 +1,101 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:logging/logging.dart';
 import 'package:yasml/yasml.dart';
 
 void main() {
-  runApp(const MainApp());
+  hierarchicalLoggingEnabled = true;
+  worldLog.level = Level.FINE;
+
+  Logger.root.onRecord.listen((record) {
+    // ignore: avoid_print
+    print('${record.level.name}: ${record.loggerName}: ${record.message}');
+  });
+
+  final world = World();
+  runApp(MainApp(world: world));
 }
 
 class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+  final World world;
+  const MainApp({super.key, required this.world});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(home: HomePageView());
+    return MaterialApp(home: CountViewWidget(world: world));
   }
 }
 
 int count = 0;
-final counterQuery = SynchronousQuery(fetch: () => count);
 
-Mutation updateCounter(int newValue) => Mutation((manager) {
-  count = newValue;
-  manager.invalidate(counterQuery);
-});
-
-final homePageViewModel = SynchronousViewModelManager<int>((composer) {
-  final count = composer.watch(counterQuery);
-  return count;
-});
-
-class HomePageView extends ViewWidget<int> {
-  const HomePageView({super.key});
+base class CountQuery extends SynchronousQuery {
+  @override
+  String get key => "CountQuery";
 
   @override
-  ViewModelManager<int> get viewModel => homePageViewModel;
+  query(World world) {
+    return count;
+  }
+}
+
+class UpdateCountCommand implements Command<void> {
+  UpdateCountCommand({required this.newValue});
+  final int newValue;
 
   @override
-  Widget build(BuildContext context, int viewModel) {
-    return Scaffold(body: Center(child: Text(viewModel.toString())));
+  FutureOr<void> execute() {
+    count = newValue;
+  }
+
+  @override
+  List<Query<dynamic>> invalidate(void result) {
+    return [CountQuery()];
+  }
+}
+
+base class CountComposition extends Composition<int> {
+  @override
+  void compose(Composer composer, ValueChanged<int> setState, VoidCallback setSettled) {
+    final count = composer.watch(CountQuery());
+    setState(count);
+    setSettled();
+  }
+
+  @override
+  int initialValue(World world) {
+    return 0;
+  }
+
+  @override
+  String get key => 'CountComposition';
+}
+
+class CountMutation extends Mutation<CountComposition> {
+  const CountMutation({required super.dispatcher});
+
+  Future<void> increment(int current) {
+    return dispatcher.dispatch(UpdateCountCommand(newValue: current + 1));
+  }
+}
+
+base class CountViewWidget extends ViewWidget<int, CountComposition, CountMutation> {
+  const CountViewWidget({super.key, required super.world});
+
+  @override
+  CountComposition get composition => CountComposition();
+
+  @override
+  MutationConstructor<CountMutation> get mutationConstructor =>
+      (dispatcher) => CountMutation(dispatcher: dispatcher);
+
+  @override
+  Widget build(BuildContext context, int current, MutationRunner<CountMutation> runMutation) {
+    return Scaffold(
+      body: Center(child: Text(current.toString())),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => runMutation((mutation) => mutation.increment(current)),
+      ),
+    );
   }
 }

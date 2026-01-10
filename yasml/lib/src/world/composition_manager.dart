@@ -1,0 +1,82 @@
+import 'package:yasml/src/logging.dart';
+import 'package:yasml/src/types/option.dart';
+import 'package:yasml/src/types/registry.dart';
+import 'package:yasml/src/view/view.dart';
+import 'package:yasml/src/view_model/composition/composition.dart';
+import 'package:yasml/src/view_model/composition/composition_container.dart';
+import 'package:yasml/src/world/world.dart';
+
+/// Handles the inizialitzation of compositionContainers as well as
+/// subscribing and settling of them
+abstract interface class CompositionManager {
+  bool get allSettled;
+  void notifySettledChange();
+
+  CompositionSubscription<T> subscribe<T>(Composition<T> composition, ViewWidgetState<T, Composition<T>, void> widget);
+  void unsubscribe(CompositionSubscription subscription);
+}
+
+final class CompositionManagerImpl implements CompositionManager {
+  final World world;
+  CompositionManagerImpl(this.world);
+
+  final Registry<String, Composition, CompositionContainer> registry = Registry();
+
+  Option<bool> previousSettledState = OptionEmpty();
+
+  @override
+  bool get allSettled => registry.items.every((container) => container.isSettled);
+
+  @override
+  void notifySettledChange() {
+    // nothing changed here
+    if (previousSettledState case OptionValue(:final value) when value == allSettled) {
+      compositionManagerLog.finer('[CompositionManager]: composition settled but not all compositions are settled yet');
+      return;
+    }
+    compositionManagerLog.fine('[CompositionManager]: settled $allSettled');
+    previousSettledState = OptionValue(allSettled);
+    world.notifySettledChanged();
+  }
+
+  CompositionContainer<T> get<T>(Composition<T> composition) {
+    final option = registry.get(composition);
+    if (option case OptionValue(value: CompositionContainer<T> container)) {
+      return container;
+    }
+    compositionManagerLog.fine('[CompositionManager]: Creating CompositionContainer for ${composition.key}');
+    final container = CompositionContainer(composition: composition, world: world);
+    registry.register(composition, container);
+    return container;
+  }
+
+  @override
+  CompositionSubscription<T> subscribe<T>(Composition<T> composition, ViewWidgetState<T, Composition<T>, void> widget) {
+    compositionManagerLog.finer(
+      '[CompositionManager]: ${widget.widget.runtimeType} subscribing to composition ${composition.key}',
+    );
+    final container = get(composition);
+    final subscription = CompositionSubscription(compositionContainer: container, widget: widget);
+
+    container.addListener(subscription);
+
+    return subscription;
+  }
+
+  @override
+  void unsubscribe(CompositionSubscription<dynamic> subscription) {
+    compositionManagerLog.finer(
+      '[CompositionManager]: ${subscription.widget.widget.runtimeType} unsubscribing from composition ${subscription.compositionContainer.composition.key}',
+    );
+    final container = subscription.compositionContainer;
+    container.removeListener(subscription);
+
+    if (container.listeners.isEmpty) {
+      compositionManagerLog.fine(
+        '[CompositionManager]: ${container.composition.key} has no listeners anymore, disposing container',
+      );
+      registry.unregister(container.composition);
+      container.dispose();
+    }
+  }
+}

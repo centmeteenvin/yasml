@@ -13,7 +13,7 @@ typedef MutationRunner<M extends Mutation> = Future<R> Function<R>(MutationDefin
 /// Extend this method and define all valid
 /// mutations for the given Composition
 @immutable
-abstract class Mutation<C extends Composition> {
-  const Mutation({required this.dispatcher});
-  final Commander dispatcher;
+abstract base class Mutation<C extends Composition> {
+  const Mutation({required this.commander});
+  final Commander commander;
 }

@@ -1,6 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
+import 'package:yasml/src/types/option.dart';
 import 'package:yasml/src/types/registry.dart';
 import 'package:yasml/src/world/world.dart';
+
+typedef CleanupFn = FutureOr<void> Function();
 
 /// A query defines an interface where T is the return type of the query
 /// and a method that can construct it from it's own definition.
@@ -8,7 +13,7 @@ import 'package:yasml/src/world/world.dart';
 @immutable
 abstract base class Query<T> implements RegisitryKey<String> {
   T initialState(World world);
-  void fetch(World world, ValueChanged<T> setState, VoidCallback settled);
+  CleanupFn fetch(World world, Option<T> currentState, ValueChanged<T> setState, VoidCallback settled);
 
   @nonVirtual
   @override

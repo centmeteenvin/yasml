@@ -24,25 +24,25 @@ final class MutationContainer<M extends Mutation> implements Commander, QueryRea
 
   @override
   Future<K> dispatch<K>(Command<K> command) async {
-    mutationContainerLog.fine('[MutationContainer-${M.runtimeType}]: Dispatching command ${command.runtimeType}');
-    final result = await command.execute();
+    mutationContainerLog.fine('[MutationContainer-$M]: Dispatching command ${command.runtimeType}');
+    final result = await command.execute(world);
 
     final invalidQueries = command.invalidate(result);
     queriesToInvalidate.addAll(invalidQueries);
 
     mutationContainerLog.fine(
-      '[MutationContainer-${M.runtimeType}]: After Dispatching command ${command.runtimeType} the following queries are to be invalidated $invalidQueries',
+      '[MutationContainer-$M]: After Dispatching command ${command.runtimeType} the following queries are to be invalidated $invalidQueries',
     );
     return result;
   }
 
   @override
   Future<K> read<K>(Query<K> query) async {
-    mutationContainerLog.finer('[MutationContainer-${M.runtimeType}]: subcribing to query ${query.key}');
+    mutationContainerLog.finer('[MutationContainer-$M]: subcribing to query ${query.key}');
     final subscription = world.queryManager.subscribe(query, this);
     await subscription.queryContainer.settled;
 
-    mutationContainerLog.fine('[MutationContainer-${M.runtimeType}]: ${query.key} settled emitting value');
+    mutationContainerLog.fine('[MutationContainer-$M]: ${query.key} settled emitting value');
 
     final value = subscription.queryContainer.state;
     world.queryManager.unsubscribe(subscription);
@@ -50,18 +50,18 @@ final class MutationContainer<M extends Mutation> implements Commander, QueryRea
   }
 
   Future<R> runMutation<R>(MutationDefinition<M, R> mutationFn) async {
-    mutationContainerLog.finer('[MutationContainer-${M.runtimeType}]: Creating Mutation Object');
+    mutationContainerLog.finer('[MutationContainer-$M]: Creating Mutation Object');
     final mutation = mutationConstructor(this);
 
-    mutationContainerLog.fine('[MutationContainer-${M.runtimeType}]: Running Mutation definition');
+    mutationContainerLog.fine('[MutationContainer-$M]: Running Mutation definition');
     final mutationResult = await mutationFn.call(mutation);
     mutationContainerLog.finer(
-      '[MutationContainer-${M.runtimeType}]: Mutation completed, following queries invalidated $queriesToInvalidate',
+      '[MutationContainer-$M]: Mutation completed, following queries invalidated $queriesToInvalidate',
     );
     world.queryManager.invalidate(queriesToInvalidate);
 
     await world.settled;
-    mutationLog.fine('[MutationContainer-${M.runtimeType}]: Mutation completed, world settled');
+    mutationLog.fine('[MutationContainer-$M]: Mutation completed, world settled');
 
     return mutationResult;
   }

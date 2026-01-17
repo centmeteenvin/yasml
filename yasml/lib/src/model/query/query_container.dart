@@ -31,6 +31,8 @@ final class QueryContainer<T> {
 
   Future<void> get settled => _settledCompleter.future;
 
+  Option<CleanupFn> cleanupFn = OptionEmpty();
+
   void setState(T newState) {
     queryContainerLog.finer('[QueryContainer-${query.key}] state updated');
     _state = OptionValue(newState);
@@ -42,13 +44,15 @@ final class QueryContainer<T> {
 
   void execute() {
     queryContainerLog.fine('[QueryContainer-${query.key}] executing query');
-    query.fetch(world, setState, () {
+    final cleanup = query.fetch(world, _state, setState, () {
       isSettled = true;
       queryContainerLog.finest('[QueryContainer-${query.key}] settled');
       world.queryManager.notifySettledChange();
 
       _settledCompleter.complete();
     });
+
+    cleanupFn = OptionValue(cleanup);
   }
 
   final Set<QuerySubscription<T>> listeners = HashSet();
@@ -76,7 +80,7 @@ final class QueryContainer<T> {
 
   void invalidate() {
     queryContainerLog.fine('[QueryContainer-${query.key}] invalidated');
-    _state = OptionEmpty();
+    _state = OptionValue(query.initialState(world));
     isSettled = false;
     if (!_settledCompleter.isCompleted) {
       _settledCompleter.completeError(
@@ -84,11 +88,28 @@ final class QueryContainer<T> {
       );
     }
     _settledCompleter = Completer();
+    if (cleanupFn case OptionValue(:final value)) {
+      value.call();
+    }
+    world.queryManager.notifySettledChange();
     if (listeners.isNotEmpty) {
       queryContainerLog.fine(
         '[QueryContainer-${query.key}] re-executing because following listeners are present after invalidation: $listeners',
       );
       execute();
+    }
+  }
+
+  Future<void> dispose() async {
+    queryContainerLog.fine('[QueryContainer-${query.key}]: Disposing container');
+    if (listeners.isNotEmpty) {
+      throw StateError("Cannot Dispose a query container that still has listeners");
+    }
+
+    isSettled = true;
+    _state = OptionEmpty();
+    if (cleanupFn case OptionValue(:final value)) {
+      await value.call();
     }
   }
 

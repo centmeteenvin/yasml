@@ -1,19 +1,23 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:logging/logging.dart';
 import 'package:yasml/yasml.dart';
+import 'package:yasml_example/async_counter.dart';
+import 'package:yasml_example/external/get_it.dart';
+import 'package:yasml_example/game/view/game_view.dart';
+import 'package:yasml_example/game/world/game_plugin.dart';
+import 'package:yasml_example/sync_counter.dart';
 
 void main() {
   hierarchicalLoggingEnabled = true;
-  worldLog.level = Level.FINE;
+  worldLog.level = Level.INFO;
 
   Logger.root.onRecord.listen((record) {
     // ignore: avoid_print
     print('${record.level.name}: ${record.loggerName}: ${record.message}');
   });
 
-  final world = World();
+  final world = World.create(plugins: [GamePlugin(), GetItPlugin()]);
   runApp(MainApp(world: world));
 }
 
@@ -23,79 +27,34 @@ class MainApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(home: CountViewWidget(world: world));
+    return MaterialApp(home: HomePage(world: world));
   }
 }
 
-int count = 0;
-
-base class CountQuery extends SynchronousQuery {
-  @override
-  String get key => "CountQuery";
+class HomePage extends HookWidget {
+  final World world;
+  const HomePage({super.key, required this.world});
 
   @override
-  query(World world) {
-    return count;
-  }
-}
+  Widget build(BuildContext context) {
+    final activeIndex = useState(0);
 
-class UpdateCountCommand implements Command<void> {
-  UpdateCountCommand({required this.newValue});
-  final int newValue;
-
-  @override
-  FutureOr<void> execute() {
-    count = newValue;
-  }
-
-  @override
-  List<Query<dynamic>> invalidate(void result) {
-    return [CountQuery()];
-  }
-}
-
-base class CountComposition extends Composition<int> {
-  @override
-  void compose(Composer composer, ValueChanged<int> setState, VoidCallback setSettled) {
-    final count = composer.watch(CountQuery());
-    setState(count);
-    setSettled();
-  }
-
-  @override
-  int initialValue(World world) {
-    return 0;
-  }
-
-  @override
-  String get key => 'CountComposition';
-}
-
-class CountMutation extends Mutation<CountComposition> {
-  const CountMutation({required super.dispatcher});
-
-  Future<void> increment(int current) {
-    return dispatcher.dispatch(UpdateCountCommand(newValue: current + 1));
-  }
-}
-
-base class CountViewWidget extends ViewWidget<int, CountComposition, CountMutation> {
-  const CountViewWidget({super.key, required super.world});
-
-  @override
-  CountComposition get composition => CountComposition();
-
-  @override
-  MutationConstructor<CountMutation> get mutationConstructor =>
-      (dispatcher) => CountMutation(dispatcher: dispatcher);
-
-  @override
-  Widget build(BuildContext context, int current, MutationRunner<CountMutation> runMutation) {
     return Scaffold(
-      body: Center(child: Text(current.toString())),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => runMutation((mutation) => mutation.increment(current)),
+      bottomNavigationBar: BottomNavigationBar(
+        items: [
+          BottomNavigationBarItem(icon: Icon(Icons.straight), label: 'sync counter'),
+          BottomNavigationBarItem(icon: Icon(Icons.hourglass_bottom), label: 'async counter'),
+          BottomNavigationBarItem(icon: Icon(Icons.cookie), label: 'Game'),
+        ],
+        currentIndex: activeIndex.value,
+        onTap: (index) => activeIndex.value = index,
       ),
+      body: switch (activeIndex.value) {
+        0 => SyncCountView(world: world),
+        1 => AsyncCounterView(world: world),
+        2 => GameView(world: world),
+        _ => ErrorWidget(ArgumentError.value(activeIndex.value, 'activeIndex', 'incorrect range')),
+      },
     );
   }
 }

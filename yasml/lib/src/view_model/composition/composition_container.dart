@@ -2,16 +2,20 @@ import 'dart:collection';
 
 import 'package:flutter/foundation.dart';
 import 'package:yasml/src/logging.dart';
+import 'package:yasml/src/model/query/future_query.dart';
 import 'package:yasml/src/model/query/query.dart';
 import 'package:yasml/src/model/query/query_container.dart';
+import 'package:yasml/src/model/query/stream_query.dart';
+import 'package:yasml/src/types/async_value.dart';
 import 'package:yasml/src/types/option.dart';
 import 'package:yasml/src/view/view.dart';
+import 'package:yasml/src/view_model/composition/async_composition.dart';
 import 'package:yasml/src/view_model/composition/composition.dart';
 import 'package:yasml/src/world/world.dart';
 
 /// Similar to the QueryContainer, the ComposerContainer
 /// Manages the Composed state and subscribes themselves to the world
-final class CompositionContainer<T> implements Composer, QueryReachable {
+final class CompositionContainer<T> implements AsyncComposer, QueryReachable {
   final Composition<T> composition;
   final World world;
 
@@ -19,7 +23,7 @@ final class CompositionContainer<T> implements Composer, QueryReachable {
 
   T get state {
     if (!_state.hasValue) {
-      _state = OptionValue(composition.initialValue(world));
+      _state = OptionValue(composition.initialValue(world, this));
     }
     return _state.requireValue;
   }
@@ -44,6 +48,40 @@ final class CompositionContainer<T> implements Composer, QueryReachable {
     final subscription = world.queryManager.subscribe(query, this);
     querySubscriptions.add(subscription);
     return subscription.queryContainer.state;
+  }
+
+  @override
+  Future<QueryT> watchFuture<QueryT>(FutureQuery<QueryT> query) async {
+    compositionContainerLog.finer('[Composition-${composition.key}] watching query ${query.key}');
+    final subscription = world.queryManager.subscribe(query, this);
+    querySubscriptions.add(subscription);
+
+    final container = subscription.queryContainer;
+    await container.settled;
+    compositionContainerLog.finest('[Composition-${composition.key}] watching query ${query.key} has settled');
+
+    return switch (container.state) {
+      AsyncLoading() => throw StateError("Aysnchronous query ${container.query.key} after settling"),
+      AsyncError(:final error, :final stackTrace) => Error.throwWithStackTrace(error, stackTrace ?? StackTrace.current),
+      AsyncData(:final data) => data,
+    };
+  }
+
+  @override
+  Future<QueryT> watchStream<QueryT>(StreamQuery<QueryT> query) async {
+    compositionContainerLog.finer('[Composition-${composition.key}] watching query ${query.key}');
+    final subscription = world.queryManager.subscribe(query, this);
+    querySubscriptions.add(subscription);
+
+    final container = subscription.queryContainer;
+    await container.settled;
+    compositionContainerLog.finest('[Composition-${composition.key}] watching query ${query.key} has settled');
+
+    return switch (container.state) {
+      AsyncLoading() => throw StateError("Aysnchronous query ${container.query.key} after settling"),
+      AsyncError(:final error, :final stackTrace) => Error.throwWithStackTrace(error, stackTrace ?? StackTrace.current),
+      AsyncData(:final data) => data,
+    };
   }
 
   final Set<CompositionSubscription<T>> listeners = HashSet();
@@ -80,6 +118,7 @@ final class CompositionContainer<T> implements Composer, QueryReachable {
       );
       world.queryManager.unsubscribe(querySubscription);
     }
+    // Compositions should not have a dispose function because no world resources should ever be bound to them
   }
 
   /// Call this to notify that the composition needs to be re-evaluated
@@ -94,11 +133,20 @@ final class CompositionContainer<T> implements Composer, QueryReachable {
 
   void execute() {
     compositionContainerLog.fine('[Composition-${composition.key}] executing composition');
-    composition.compose(this, setState, () {
+    composition.execute(this, setState, () {
       isSettled = true;
       compositionLog.fine('[Composition-${composition.key}] settled');
       world.compositionManager.notifySettledChange();
     });
+  }
+
+  Future<void> refresh() {
+    final subscribedQueries = querySubscriptions.map((sub) => sub.queryContainer.query).toSet();
+    compositionContainerLog.fine(
+      '[Composition-${composition.key}] Refreshing -- invalidating ${subscribedQueries.map((q) => q.key).join(', ')}',
+    );
+    world.queryManager.invalidate(subscribedQueries);
+    return world.settled;
   }
 
   @override

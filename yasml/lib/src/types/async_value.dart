@@ -1,14 +1,14 @@
 import 'package:flutter/foundation.dart';
 
 @immutable
-sealed class AsyncValue<T, E> {
+sealed class AsyncValue<T> {
   bool get isLoading;
   bool get hasError;
   bool get hasData => !isLoading && !hasError;
 }
 
 @immutable
-final class AsyncLoading<T, E> extends AsyncValue<T, E> {
+final class AsyncLoading<T> extends AsyncValue<T> {
   @override
   bool get isLoading => true;
 
@@ -17,7 +17,7 @@ final class AsyncLoading<T, E> extends AsyncValue<T, E> {
 }
 
 @immutable
-final class AsyncError<T, E> extends AsyncValue<T, E> {
+final class AsyncError<T> extends AsyncValue<T> {
   @override
   bool get isLoading => false;
   @override
@@ -25,12 +25,12 @@ final class AsyncError<T, E> extends AsyncValue<T, E> {
 
   AsyncError(this.error, {this.stackTrace});
 
-  final E error;
+  final Object error;
   final StackTrace? stackTrace;
 }
 
 @immutable
-final class AsyncData<T, E> extends AsyncValue<T, E> {
+final class AsyncData<T> extends AsyncValue<T> {
   @override
   bool get isLoading => false;
   @override

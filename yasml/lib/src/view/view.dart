@@ -6,6 +6,8 @@ import 'package:yasml/src/view_model/mutation.dart';
 import 'package:yasml/src/view_model/mutation_container.dart';
 import 'package:yasml/src/world/world.dart';
 
+typedef Notifier<M extends Mutation> = ({Future<void> Function() refresh, MutationRunner<M> runMutation});
+
 @immutable
 abstract base class ViewWidget<T, C extends Composition<T>, M extends Mutation<C>> extends StatefulWidget {
   const ViewWidget({super.key, required this.world});
@@ -19,7 +21,7 @@ abstract base class ViewWidget<T, C extends Composition<T>, M extends Mutation<C
   @override
   State<ViewWidget<T, C, M>> createState() => ViewWidgetState<T, C, M>();
 
-  Widget build(BuildContext context, T composition, MutationRunner<M> runMutation);
+  Widget build(BuildContext context, T composition, Notifier<M> notifier);
 }
 
 class ViewWidgetState<T, C extends Composition<T>, M extends Mutation<C>> extends State<ViewWidget<T, C, M>> {
@@ -53,8 +55,10 @@ class ViewWidgetState<T, C extends Composition<T>, M extends Mutation<C>> extend
   }
 
   @override
-  Widget build(BuildContext context) =>
-      widget.build(context, compositionSubscription.compositionContainer.state, _runMutation);
+  Widget build(BuildContext context) => widget.build(context, compositionSubscription.compositionContainer.state, (
+    refresh: () => widget.world.compositionManager.refresh(widget.composition),
+    runMutation: _runMutation,
+  ));
 
   Future<R> _runMutation<R>(MutationDefinition<M, R> definition) async {
     final mutationContainer = MutationContainer(world: widget.world, mutationConstructor: widget.mutationConstructor);

@@ -15,9 +15,9 @@ abstract interface class Composer {
 /// to compose multiple queries into a given ViewModel
 /// Additionally it should also provider an initial value
 abstract base class Composition<T> implements RegisitryKey<String> {
-  void compose(Composer composer, ValueChanged<T> setState, VoidCallback setSettled);
+  void execute(Composer composer, ValueChanged<T> setState, VoidCallback setSettled);
 
-  T initialValue(World world);
+  T initialValue(World world, Composer composer);
 
   @override
   String get key;

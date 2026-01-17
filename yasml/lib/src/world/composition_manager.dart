@@ -14,10 +14,16 @@ abstract interface class CompositionManager {
 
   CompositionSubscription<T> subscribe<T>(Composition<T> composition, ViewWidgetState<T, Composition<T>, void> widget);
   void unsubscribe(CompositionSubscription subscription);
+
+  /// Invalidates all queries a composition is listening to
+  Future<void> refresh(Composition composition);
+
+  /// Destroy all composition containers
+  Future<void> destroy();
 }
 
 final class CompositionManagerImpl implements CompositionManager {
-  final World world;
+  final WorldImpl world;
   CompositionManagerImpl(this.world);
 
   final Registry<String, Composition, CompositionContainer> registry = Registry();
@@ -31,7 +37,7 @@ final class CompositionManagerImpl implements CompositionManager {
   void notifySettledChange() {
     // nothing changed here
     if (previousSettledState case OptionValue(:final value) when value == allSettled) {
-      compositionManagerLog.finer('[CompositionManager]: composition settled but not all compositions are settled yet');
+      compositionManagerLog.finer('[CompositionManager]: composition settled did not change: $allSettled');
       return;
     }
     compositionManagerLog.fine('[CompositionManager]: settled $allSettled');
@@ -48,6 +54,11 @@ final class CompositionManagerImpl implements CompositionManager {
     final container = CompositionContainer(composition: composition, world: world);
     registry.register(composition, container);
     return container;
+  }
+
+  void remove(Composition composition) {
+    compositionManagerLog.fine('[CompositionManager]: Removing CompositionContainer for ${composition.key}');
+    registry.unregister(composition);
   }
 
   @override
@@ -77,6 +88,22 @@ final class CompositionManagerImpl implements CompositionManager {
       );
       registry.unregister(container.composition);
       container.dispose();
+      remove(container.composition);
+    }
+  }
+
+  @override
+  Future<void> refresh(Composition composition) {
+    final container = get(composition);
+    return container.refresh();
+  }
+
+  @override
+  Future<void> destroy() async {
+    compositionManagerLog.fine('[CompositionManager]: Destroying CompositionContainers');
+    for (final container in registry.items) {
+      container.dispose();
+      remove(container.composition);
     }
   }
 }

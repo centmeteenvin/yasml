@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:yasml/src/logging.dart';
 import 'package:yasml/src/model/query/query.dart';
 import 'package:yasml/src/types/async_value.dart';
 import 'package:yasml/src/types/option.dart';
@@ -23,17 +22,13 @@ abstract base class StreamQuery<T> extends Query<AsyncValue<T>> {
     final subscription = stream.listen(
       cancelOnError: true,
       (event) {
-        queryLog.fine('[StreamQuery-$key] Query result: $event');
         setState(AsyncData(event));
       },
       onError: (Object error, StackTrace stackTrace) {
-        queryLog.fine('[StreamQuery-$key] Query error', error, stackTrace);
         setState(AsyncError(error as Exception, stackTrace: stackTrace));
         settled();
       },
-      onDone: () {
-        queryLog.fine('[StreamQuery-$key] Stream Finsished');
-      },
+      onDone: () {},
     );
 
     return subscription.cancel;

@@ -1,18 +1,5 @@
 library;
 
-export './src/logging.dart'
-    show
-        yasmlLog,
-        worldLog,
-        queryManagerLog,
-        compositionManagerLog,
-        queryContainerLog,
-        compositionContainerLog,
-        mutationContainerLog,
-        compositionLog,
-        mutationLog,
-        queryLog,
-        commandLog;
 export './src/model/command.dart' show Command;
 export './src/model/query/future_query.dart' show FutureQuery;
 export './src/model/query/query.dart' show Query;
@@ -26,3 +13,4 @@ export './src/view_model/composition/synchronous_composition.dart' show Synchron
 export './src/view_model/mutation.dart' show Mutation, MutationConstructor, MutationDefinition, MutationRunner;
 export './src/world/plugins.dart' show WorldPlugin;
 export './src/world/world.dart' show World;
+export 'src/logging/logging.dart' show yasmlLog, worldLog, queryLog, compositionLog, viewLog, mutationLog, commandLog;

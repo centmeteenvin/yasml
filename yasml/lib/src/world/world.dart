@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:yasml/src/logging.dart';
+import 'package:yasml/src/logging/logging_observer.dart';
+import 'package:yasml/src/observer/events.dart';
+import 'package:yasml/src/observer/observer.dart';
 import 'package:yasml/src/world/composition_manager.dart';
 import 'package:yasml/src/world/plugins.dart';
 import 'package:yasml/src/world/query_manager.dart';
@@ -11,7 +13,7 @@ abstract interface class World {
   /// If the world is already settled, calling this will return a resolved Future
   Future<void> get settled;
 
-  factory World.create({List<WorldPlugin> plugins}) = WorldImpl;
+  factory World.create({required List<WorldPlugin> plugins, required List<Observer> observers}) = WorldImpl;
 
   /// Destroy the world and all it's associated resources;
   Future<void> destroy();
@@ -23,6 +25,11 @@ abstract interface class World {
 
   List<WorldPlugin> get plugins;
   T? pluginByType<T>();
+
+  List<Observer> get observers;
+
+  @internal
+  void emit(Event event);
 }
 
 /// The world acts as the context where the application state runs in
@@ -35,13 +42,22 @@ final class WorldImpl implements World {
   @override
   final List<WorldPlugin> plugins;
 
-  WorldImpl({this.plugins = const []}) {
+  @override
+  final List<Observer> observers;
+
+  WorldImpl({required this.plugins, required this.observers}) {
     queryManager = QueryManagerImpl(this);
     compositionManager = CompositionManagerImpl(this);
     for (final plugin in plugins) {
       plugin.onInit(this);
     }
-    worldLog.info('[World]: initialized');
+
+    observers.add(LoggingObserver());
+
+    for (final observer in observers) {
+      observer.onInit(this);
+    }
+    emit(WorldCreatedEvent());
   }
 
   final StreamController<void> _settledController = StreamController.broadcast();
@@ -56,16 +72,14 @@ final class WorldImpl implements World {
 
   void notifySettledChanged() {
     if (isSettled) {
-      worldLog.fine('World settled');
+      emit(WorldSettledEvent());
       _settledController.add(null);
-    } else {
-      worldLog.finer('[World]: a container has settled but some not yet');
     }
   }
 
   @override
   Future<void> destroy() async {
-    worldLog.info("[World] Destroying world");
+    emit(WorldDestroyedEvent());
     for (final plugin in plugins) {
       await plugin.onDispose();
     }
@@ -77,5 +91,12 @@ final class WorldImpl implements World {
   @override
   T? pluginByType<T>() {
     return plugins.whereType<T>().firstOrNull;
+  }
+
+  @override
+  void emit(Event event) {
+    for (final observer in observers) {
+      observer.onEvent(event);
+    }
   }
 }

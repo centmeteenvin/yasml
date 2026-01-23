@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 
 import 'package:yasml/src/model/query/query_container.dart';
+import 'package:yasml/src/observer/events.dart';
 import 'package:yasml/yasml.dart';
 
 abstract interface class Commander {
@@ -24,44 +25,42 @@ final class MutationContainer<M extends Mutation> implements Commander, QueryRea
 
   @override
   Future<K> dispatch<K>(Command<K> command) async {
-    mutationContainerLog.fine('[MutationContainer-$M]: Dispatching command ${command.runtimeType}');
+    world.emit(MutationCommandDispatchedEvent(mutationType: M, commandType: command.runtimeType));
+    world.emit(CommandExecutedEvent(commandType: command.runtimeType));
     final result = await command.execute(world);
 
     final invalidQueries = command.invalidate(result);
     queriesToInvalidate.addAll(invalidQueries);
 
-    mutationContainerLog.fine(
-      '[MutationContainer-$M]: After Dispatching command ${command.runtimeType} the following queries are to be invalidated $invalidQueries',
+    world.emit(
+      CommandQueryInvalidationEvent(commandType: command.runtimeType, queriesToInvalidate: queriesToInvalidate),
     );
     return result;
   }
 
   @override
   Future<K> read<K>(Query<K> query) async {
-    mutationContainerLog.finer('[MutationContainer-$M]: subcribing to query ${query.key}');
     final subscription = world.queryManager.subscribe(query, this);
     await subscription.queryContainer.settled;
 
-    mutationContainerLog.fine('[MutationContainer-$M]: ${query.key} settled emitting value');
-
     final value = subscription.queryContainer.state;
     world.queryManager.unsubscribe(subscription);
+
+    world.emit(MutationQueryReadEvent(mutationType: M, queryKey: query.key, queryState: value));
     return value;
   }
 
   Future<R> runMutation<R>(MutationDefinition<M, R> mutationFn) async {
-    mutationContainerLog.finer('[MutationContainer-$M]: Creating Mutation Object');
+    world.emit(MutationContainerCreatedEvent(mutationType: M));
     final mutation = mutationConstructor(this);
 
-    mutationContainerLog.fine('[MutationContainer-$M]: Running Mutation definition');
+    world.emit(MutationExecutedEvent(mutationType: M));
     final mutationResult = await mutationFn.call(mutation);
-    mutationContainerLog.finer(
-      '[MutationContainer-$M]: Mutation completed, following queries invalidated $queriesToInvalidate',
-    );
+
+    world.emit(MutationInvalidationEvent(mutationType: M, queriesToInvalidate: queriesToInvalidate));
     world.queryManager.invalidate(queriesToInvalidate);
 
     await world.settled;
-    mutationLog.fine('[MutationContainer-$M]: Mutation completed, world settled');
 
     return mutationResult;
   }

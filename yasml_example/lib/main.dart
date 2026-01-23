@@ -17,7 +17,7 @@ void main() {
     print('${record.level.name}: ${record.loggerName}: ${record.message}');
   });
 
-  final world = World.create(plugins: [GamePlugin(), GetItPlugin()]);
+  final world = World.create(plugins: [GamePlugin(), GetItPlugin()], observers: []);
   runApp(MainApp(world: world));
 }
 

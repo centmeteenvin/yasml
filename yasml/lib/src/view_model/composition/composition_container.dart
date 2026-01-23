@@ -1,11 +1,11 @@
 import 'dart:collection';
 
 import 'package:flutter/foundation.dart';
-import 'package:yasml/src/logging.dart';
 import 'package:yasml/src/model/query/future_query.dart';
 import 'package:yasml/src/model/query/query.dart';
 import 'package:yasml/src/model/query/query_container.dart';
 import 'package:yasml/src/model/query/stream_query.dart';
+import 'package:yasml/src/observer/events.dart';
 import 'package:yasml/src/types/async_value.dart';
 import 'package:yasml/src/types/option.dart';
 import 'package:yasml/src/view/view.dart';
@@ -29,7 +29,7 @@ final class CompositionContainer<T> implements AsyncComposer, QueryReachable {
   }
 
   void setState(T newState) {
-    compositionContainerLog.finer('[Composition-${composition.key}] state updated');
+    world.emit(CompositionSetStateEvent(compositionKey: composition.key, newState: newState));
     _state = OptionValue(newState);
     for (final listener in listeners) {
       listener.widget.updateState(newState);
@@ -44,24 +44,42 @@ final class CompositionContainer<T> implements AsyncComposer, QueryReachable {
 
   @override
   QueryT watch<QueryT>(Query<QueryT> query) {
-    compositionContainerLog.finer('[Composition-${composition.key}] watching query ${query.key}');
     final subscription = world.queryManager.subscribe(query, this);
-    querySubscriptions.add(subscription);
+    final didAdd = querySubscriptions.add(subscription);
+
+    if (didAdd) {
+      world.emit(
+        CompositionWatchEvent(
+          compositionKey: composition.key,
+          watchingQueryKey: subscription.queryContainer.query.key,
+          isAsync: false,
+        ),
+      );
+    }
+
     return subscription.queryContainer.state;
   }
 
   @override
   Future<QueryT> watchFuture<QueryT>(FutureQuery<QueryT> query) async {
-    compositionContainerLog.finer('[Composition-${composition.key}] watching query ${query.key}');
     final subscription = world.queryManager.subscribe(query, this);
-    querySubscriptions.add(subscription);
+    final didAdd = querySubscriptions.add(subscription);
+
+    if (didAdd) {
+      world.emit(
+        CompositionWatchEvent(
+          compositionKey: composition.key,
+          watchingQueryKey: subscription.queryContainer.query.key,
+          isAsync: true,
+        ),
+      );
+    }
 
     final container = subscription.queryContainer;
     await container.settled;
-    compositionContainerLog.finest('[Composition-${composition.key}] watching query ${query.key} has settled');
 
     return switch (container.state) {
-      AsyncLoading() => throw StateError("Aysnchronous query ${container.query.key} after settling"),
+      AsyncLoading() => throw StateError("Aysnchronous query ${container.query.key} still in loading after settling"),
       AsyncError(:final error, :final stackTrace) => Error.throwWithStackTrace(error, stackTrace ?? StackTrace.current),
       AsyncData(:final data) => data,
     };
@@ -69,13 +87,21 @@ final class CompositionContainer<T> implements AsyncComposer, QueryReachable {
 
   @override
   Future<QueryT> watchStream<QueryT>(StreamQuery<QueryT> query) async {
-    compositionContainerLog.finer('[Composition-${composition.key}] watching query ${query.key}');
     final subscription = world.queryManager.subscribe(query, this);
-    querySubscriptions.add(subscription);
+    final didAdd = querySubscriptions.add(subscription);
+
+    if (didAdd) {
+      world.emit(
+        CompositionWatchEvent(
+          compositionKey: composition.key,
+          watchingQueryKey: subscription.queryContainer.query.key,
+          isAsync: true,
+        ),
+      );
+    }
 
     final container = subscription.queryContainer;
     await container.settled;
-    compositionContainerLog.finest('[Composition-${composition.key}] watching query ${query.key} has settled');
 
     return switch (container.state) {
       AsyncLoading() => throw StateError("Aysnchronous query ${container.query.key} after settling"),
@@ -89,12 +115,11 @@ final class CompositionContainer<T> implements AsyncComposer, QueryReachable {
   void addListener(CompositionSubscription<T> subscription) {
     final didAdd = listeners.add(subscription);
     if (didAdd) {
-      compositionContainerLog.fine(
-        '[Composition-${composition.key}]  adding ${subscription.widget.widget.runtimeType} as listener',
-      );
-    } else {
-      compositionContainerLog.finer(
-        '[Composition-${composition.key}] ${subscription.widget.widget.runtimeType} already listened',
+      world.emit(
+        CompositionContainerNewListenerEvent(
+          compositionKey: composition.key,
+          compositionListenableType: subscription.widget.widget.runtimeType,
+        ),
       );
     }
 
@@ -104,18 +129,26 @@ final class CompositionContainer<T> implements AsyncComposer, QueryReachable {
   }
 
   void removeListener(CompositionSubscription<T> subscription) {
-    compositionContainerLog.fine(
-      '[Composition-${composition.key}] removing ${subscription.widget.widget.runtimeType} from listener',
-    );
-    listeners.remove(subscription);
+    final didRemove = listeners.remove(subscription);
+    if (didRemove) {
+      world.emit(
+        CompositionContainerListenerRemovedEvent(
+          compositionKey: composition.key,
+          compositionListenableType: subscription.widget.widget.runtimeType,
+        ),
+      );
+    }
   }
 
   void dispose() {
-    compositionContainerLog.fine('[Composition-${composition.key}] disposing self');
     for (final querySubscription in querySubscriptions) {
-      compositionContainerLog.finer(
-        '[Composition-${composition.key}] unsubscribing from ${querySubscription.queryContainer.query.key}',
+      world.emit(
+        CompositionUnsubscribeEvent(
+          compositionKey: composition.key,
+          queryKey: querySubscription.queryContainer.query.key,
+        ),
       );
+
       world.queryManager.unsubscribe(querySubscription);
     }
     // Compositions should not have a dispose function because no world resources should ever be bound to them
@@ -127,24 +160,24 @@ final class CompositionContainer<T> implements AsyncComposer, QueryReachable {
     if (listeners.isEmpty) {
       return; // Dont run composer when no one is listening
     }
-    compositionContainerLog.finest('[Composition-${composition.key}] notified by query');
     execute();
   }
 
   void execute() {
-    compositionContainerLog.fine('[Composition-${composition.key}] executing composition');
+    world.emit(CompositionExecutedEvent(compositionKey: composition.key));
+
     composition.execute(this, setState, () {
       isSettled = true;
-      compositionLog.fine('[Composition-${composition.key}] settled');
+
+      world.emit(CompositionSettledEvent(compositionKey: composition.key));
       world.compositionManager.notifySettledChange();
     });
   }
 
   Future<void> refresh() {
     final subscribedQueries = querySubscriptions.map((sub) => sub.queryContainer.query).toSet();
-    compositionContainerLog.fine(
-      '[Composition-${composition.key}] Refreshing -- invalidating ${subscribedQueries.map((q) => q.key).join(', ')}',
-    );
+    world.emit(CompositionRefreshEvent(compositionKey: composition.key, queriesToInvalidate: subscribedQueries));
+
     world.queryManager.invalidate(subscribedQueries);
     return world.settled;
   }

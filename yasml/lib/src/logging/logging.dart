@@ -44,28 +44,15 @@ final Logger yasmlLog = Logger('yasml');
 final Logger worldLog = Logger('yasml.world');
 
 /// Logger for [QueryManager] operations (subscriptions, invalidations).
-final Logger queryManagerLog = Logger('yasml.world.query');
-
-/// Logger for [QueryContainer] operations (fetch, state changes, invalidation).
-final Logger queryContainerLog = Logger('yasml.world.query.container');
-
-/// Logger for [Query] definition events (execution, state, settling).
-final Logger queryLog = Logger('yasml.world.query.container.definition');
+final Logger queryLog = Logger('yasml.world.query');
 
 /// Logger for [CompositionManager] operations.
-final Logger compositionManagerLog = Logger('yasml.world.composition');
-
-/// Logger for [CompositionContainer] operations (compose, watch).
-final Logger compositionContainerLog = Logger('yasml.world.composition.container');
-
-/// Logger for [Composition] definition events.
-final Logger compositionLog = Logger('yasml.world.composition.container.definition');
-
-/// Logger for [MutationContainer] operations (command dispatch, mutation runs).
-final Logger mutationContainerLog = Logger('yasml.world.mutation.container');
+final Logger compositionLog = Logger('yasml.world.composition');
 
 /// Logger for [Mutation] definition events.
-final Logger mutationLog = Logger('yasml.world.mutation.container.definition');
+final Logger mutationLog = Logger('yasml.world.mutation');
 
 /// Logger for [Command] execution and invalidation.
-final Logger commandLog = Logger('yasml.world.command.definition');
+final Logger commandLog = Logger('yasml.world.command');
+
+final Logger viewLog = Logger('yasml.world.view');

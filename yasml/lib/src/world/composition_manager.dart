@@ -1,4 +1,4 @@
-import 'package:yasml/src/logging.dart';
+import 'package:yasml/src/observer/events.dart';
 import 'package:yasml/src/types/option.dart';
 import 'package:yasml/src/types/registry.dart';
 import 'package:yasml/src/view/view.dart';
@@ -37,10 +37,8 @@ final class CompositionManagerImpl implements CompositionManager {
   void notifySettledChange() {
     // nothing changed here
     if (previousSettledState case OptionValue(:final value) when value == allSettled) {
-      compositionManagerLog.finer('[CompositionManager]: composition settled did not change: $allSettled');
       return;
     }
-    compositionManagerLog.fine('[CompositionManager]: settled $allSettled');
     previousSettledState = OptionValue(allSettled);
     world.notifySettledChanged();
   }
@@ -50,22 +48,19 @@ final class CompositionManagerImpl implements CompositionManager {
     if (option case OptionValue(value: CompositionContainer<T> container)) {
       return container;
     }
-    compositionManagerLog.fine('[CompositionManager]: Creating CompositionContainer for ${composition.key}');
+
+    world.emit(CompositionContainerCreatedEvent(compositionKey: composition.key, reason: 'new Listener'));
     final container = CompositionContainer(composition: composition, world: world);
     registry.register(composition, container);
     return container;
   }
 
   void remove(Composition composition) {
-    compositionManagerLog.fine('[CompositionManager]: Removing CompositionContainer for ${composition.key}');
     registry.unregister(composition);
   }
 
   @override
   CompositionSubscription<T> subscribe<T>(Composition<T> composition, ViewWidgetState<T, Composition<T>, void> widget) {
-    compositionManagerLog.finer(
-      '[CompositionManager]: ${widget.widget.runtimeType} subscribing to composition ${composition.key}',
-    );
     final container = get(composition);
     final subscription = CompositionSubscription(compositionContainer: container, widget: widget);
 
@@ -76,17 +71,13 @@ final class CompositionManagerImpl implements CompositionManager {
 
   @override
   void unsubscribe(CompositionSubscription<dynamic> subscription) {
-    compositionManagerLog.finer(
-      '[CompositionManager]: ${subscription.widget.widget.runtimeType} unsubscribing from composition ${subscription.compositionContainer.composition.key}',
-    );
     final container = subscription.compositionContainer;
     container.removeListener(subscription);
 
     if (container.listeners.isEmpty) {
-      compositionManagerLog.fine(
-        '[CompositionManager]: ${container.composition.key} has no listeners anymore, disposing container',
-      );
       registry.unregister(container.composition);
+
+      world.emit(CompositionContainerDisposedEvent(compositionKey: container.composition.key, reason: 'No Listeners'));
       container.dispose();
       remove(container.composition);
     }
@@ -100,10 +91,9 @@ final class CompositionManagerImpl implements CompositionManager {
 
   @override
   Future<void> destroy() async {
-    compositionManagerLog.fine('[CompositionManager]: Destroying CompositionContainers');
-    for (final container in registry.items) {
-      container.dispose();
-      remove(container.composition);
-    }
+    registry.items
+        .expand((container) => container.listeners.cast<CompositionSubscription>())
+        .toList()
+        .forEach(unsubscribe);
   }
 }

@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:collection';
 
 import 'package:flutter/cupertino.dart';
-import 'package:yasml/src/logging.dart';
 import 'package:yasml/src/model/query/query.dart';
+import 'package:yasml/src/observer/events.dart';
 import 'package:yasml/src/types/option.dart';
 import 'package:yasml/src/world/world.dart';
 
@@ -34,19 +34,18 @@ final class QueryContainer<T> {
   Option<CleanupFn> cleanupFn = OptionEmpty();
 
   void setState(T newState) {
-    queryContainerLog.finer('[QueryContainer-${query.key}] state updated');
+    world.emit(QuerySetStateEvent(queryKey: query.key, newState: newState));
     _state = OptionValue(newState);
     for (final listener in listeners) {
-      queryContainerLog.finest('[QueryContainer-${query.key}] Notifiying ${listener.listeningContainer.runtimeType}');
       listener.listeningContainer.notify();
     }
   }
 
   void execute() {
-    queryContainerLog.fine('[QueryContainer-${query.key}] executing query');
+    world.emit(QueryExecutedEvent(queryKey: query.key));
     final cleanup = query.fetch(world, _state, setState, () {
       isSettled = true;
-      queryContainerLog.finest('[QueryContainer-${query.key}] settled');
+      world.emit(QuerySettledEvent(queryKey: query.key));
       world.queryManager.notifySettledChange();
 
       _settledCompleter.complete();
@@ -60,26 +59,35 @@ final class QueryContainer<T> {
   void addListener(QuerySubscription<T> subscription) {
     final didAdd = listeners.add(subscription);
     if (didAdd) {
-      queryContainerLog.fine(
-        '[QueryContainer-${query.key}] adding ${subscription.listeningContainer.runtimeType} as listener',
-      );
-    } else {
-      queryContainerLog.finer(
-        '[QueryContainer-${query.key}] ${subscription.listeningContainer.runtimeType} already listened',
+      world.emit(
+        QueryContainerNewListenerEvent(
+          queryKey: query.key,
+          queryListenableType: subscription.listeningContainer.runtimeType,
+        ),
       );
     }
+
     if (_state case OptionEmpty()) {
       execute();
     }
   }
 
   void removeListener(QuerySubscription<T> subscription) {
-    queryContainerLog.fine('[QueryContainer-${query.key}] removing ${subscription.listeningContainer.runtimeType}');
-    listeners.remove(subscription);
+    final didRemove = listeners.remove(subscription);
+
+    if (didRemove) {
+      world.emit(
+        QueryContainerListenerRemovedEvent(
+          queryKey: query.key,
+          queryListenableType: subscription.listeningContainer.runtimeType,
+        ),
+      );
+    }
   }
 
   void invalidate() {
-    queryContainerLog.fine('[QueryContainer-${query.key}] invalidated');
+    world.emit(QueryInvalidatedEvent(queryKey: query.key));
+
     _state = OptionValue(query.initialState(world));
     isSettled = false;
     if (!_settledCompleter.isCompleted) {
@@ -93,15 +101,12 @@ final class QueryContainer<T> {
     }
     world.queryManager.notifySettledChange();
     if (listeners.isNotEmpty) {
-      queryContainerLog.fine(
-        '[QueryContainer-${query.key}] re-executing because following listeners are present after invalidation: $listeners',
-      );
+      world.emit(QueryExecutedEvent(queryKey: query.key));
       execute();
     }
   }
 
   Future<void> dispose() async {
-    queryContainerLog.fine('[QueryContainer-${query.key}]: Disposing container');
     if (listeners.isNotEmpty) {
       throw StateError("Cannot Dispose a query container that still has listeners");
     }

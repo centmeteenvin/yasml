@@ -1,6 +1,6 @@
-import 'package:yasml/src/logging.dart';
 import 'package:yasml/src/model/query/query.dart';
 import 'package:yasml/src/model/query/query_container.dart';
+import 'package:yasml/src/observer/events.dart';
 import 'package:yasml/src/types/option.dart';
 import 'package:yasml/src/types/registry.dart';
 import 'package:yasml/src/world/world.dart';
@@ -38,10 +38,8 @@ final class QueryManagerImpl implements QueryManager {
   void notifySettledChange() {
     // The entire settled state is still the same
     if (previousSettledState case OptionValue(:final value) when value == allSettled) {
-      queryManagerLog.finer('[QueryManager]: A query settled did not change: $allSettled');
       return;
     }
-    queryManagerLog.fine('[QueryManager]: settled: $allSettled');
     previousSettledState = OptionValue(allSettled);
     world.notifySettledChanged();
   }
@@ -51,20 +49,19 @@ final class QueryManagerImpl implements QueryManager {
     if (option case OptionValue(:QueryContainer<T> value)) {
       return value;
     }
-    queryManagerLog.fine('[QueryManager]: Creating QueryContainer for ${query.key}');
+
+    world.emit(QueryContainerCreatedEvent(queryKey: query.key, reason: 'New Listerner'));
     final container = QueryContainer(world: world, query: query);
     registry.register(query, container);
     return container;
   }
 
   void remove(Query query) {
-    queryManagerLog.fine('[QueryManager]: Removing QueryContainer for ${query.key}');
     registry.unregister(query);
   }
 
   @override
   QuerySubscription<T> subscribe<T>(Query<T> query, QueryReachable listeningContainer) {
-    queryManagerLog.fine('[QueryManager]: ${listeningContainer.runtimeType} subscribing to query ${query.key}');
     final queryContainer = get(query);
     final subscription = QuerySubscription(listeningContainer: listeningContainer, queryContainer: queryContainer);
     queryContainer.addListener(subscription);
@@ -73,14 +70,10 @@ final class QueryManagerImpl implements QueryManager {
 
   @override
   void unsubscribe(QuerySubscription subscription) {
-    queryManagerLog.fine(
-      '[QueryManager]: ${subscription.listeningContainer.runtimeType} unsubscribing from query ${subscription.queryContainer.query.key}',
-    );
-
     final container = subscription.queryContainer;
     container.removeListener(subscription);
     if (container.listeners.isEmpty) {
-      queryManagerLog.fine('[QueryManager]: ${container.query.key} has no listeners any more, disposing container');
+      world.emit(QueryContainerDisposedEvent(queryKey: container.query.key, reason: 'No Listeners'));
       container.dispose();
       remove(container.query);
     }
@@ -89,7 +82,7 @@ final class QueryManagerImpl implements QueryManager {
   @override
   void invalidate(Set<Query> queries) {
     if (queries.isEmpty) return;
-    queryManagerLog.fine('[QueryManager]: Invalidating queries: ${queries.map((q) => q.key).join(', ')}');
+
     for (final query in queries) {
       final container = registry.get(query);
       if (container case OptionValue(value: final container)) {
@@ -100,10 +93,9 @@ final class QueryManagerImpl implements QueryManager {
 
   @override
   Future<void> destroy() async {
-    queryManagerLog.fine('[QueryManager]: Destroying QueryContainers');
-    for (final container in registry.items) {
-      await container.dispose();
-      remove(container.query);
-    }
+    registry.items
+        .expand((container) => container.listeners.cast<QuerySubscription>())
+        .toList()
+        .forEach(unsubscribe);
   }
 }

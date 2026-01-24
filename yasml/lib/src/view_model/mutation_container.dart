@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'dart:collection';
 
+import 'package:yasml/src/model/command.dart';
+import 'package:yasml/src/model/query/query.dart';
 import 'package:yasml/src/model/query/query_container.dart';
 import 'package:yasml/src/observer/events.dart';
-import 'package:yasml/yasml.dart';
+import 'package:yasml/src/view_model/mutation.dart';
+import 'package:yasml/src/world/world.dart';
 
 abstract interface class Commander {
   /// Read the current state of a given query

@@ -13,12 +13,7 @@ base class PlayerStatsQuery extends SynchronousQuery<PlayerStats> {
 
   @override
   PlayerStats query(World world) {
-    return PlayerStats(
-      playerId: 'player_123',
-      kills: 42,
-      wins: 15,
-      level: 5,
-    );
+    return PlayerStats(playerId: 'player_123', kills: 42, wins: 15, level: 5);
   }
 }
 

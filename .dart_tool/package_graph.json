@@ -22,7 +22,8 @@
       ],
       "devDependencies": [
         "flutter_lints",
-        "flutter_test"
+        "flutter_test",
+        "very_good_analysis"
       ]
     },
     {
@@ -108,6 +109,11 @@
         "sky_engine",
         "vector_math"
       ]
+    },
+    {
+      "name": "very_good_analysis",
+      "version": "10.0.0",
+      "dependencies": []
     },
     {
       "name": "async",

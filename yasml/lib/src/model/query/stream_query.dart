@@ -5,6 +5,8 @@ import 'package:yasml/src/types/option.dart';
 import 'package:yasml/src/world/world.dart';
 
 abstract base class StreamQuery<T> extends Query<AsyncValue<T>> {
+  const StreamQuery();
+
   @override
   AsyncValue<T> initialState(World world) {
     return AsyncLoading();
@@ -35,4 +37,21 @@ abstract base class StreamQuery<T> extends Query<AsyncValue<T>> {
   }
 
   Stream<T> query(World world, VoidCallback setSettled);
+
+  const factory StreamQuery.create(
+    Stream<T> Function(World world, VoidCallback setSettled) queryFn, {
+    required String key,
+  }) = StreamQueryFunction;
+}
+
+final class StreamQueryFunction<T> extends StreamQuery<T> {
+  final Stream<T> Function(World world, VoidCallback setSettled) queryFn;
+
+  @override
+  final String key;
+
+  const StreamQueryFunction(this.queryFn, {required this.key});
+
+  @override
+  Stream<T> query(World world, VoidCallback setSettled) => queryFn(world, setSettled);
 }

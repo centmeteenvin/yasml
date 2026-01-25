@@ -5,15 +5,7 @@ import 'package:yasml/yasml.dart';
 
 int count = 0;
 
-base class CountQuery extends SynchronousQuery<int> {
-  @override
-  String get key => "CountQuery";
-
-  @override
-  int query(World world) {
-    return count;
-  }
-}
+final countQuery = SynchronousQuery.create((world) => count, key: 'CountQuery');
 
 class UpdateCountCommand implements Command<void> {
   UpdateCountCommand({required this.newValue});
@@ -25,9 +17,7 @@ class UpdateCountCommand implements Command<void> {
   }
 
   @override
-  List<Query<dynamic>> invalidate(void result) {
-    return [CountQuery()];
-  }
+  List<Query<dynamic>> invalidate(void result) => [countQuery];
 }
 
 base class CountMutation extends Mutation<CountComposition> {
@@ -45,7 +35,7 @@ base class CountMutation extends Mutation<CountComposition> {
 base class CountComposition extends SynchronousComposition<int> {
   @override
   int compose(Composer composer) {
-    final count = composer.watch(CountQuery());
+    final count = composer.watch(countQuery);
     return count;
   }
 

@@ -12,6 +12,8 @@ typedef CleanupFn = FutureOr<void> Function();
 /// Aside from that it should also define an initial state
 @immutable
 abstract base class Query<T> implements RegisitryKey<String> {
+  const Query();
+
   T initialState(World world);
   CleanupFn fetch(World world, Option<T> currentState, ValueChanged<T> setState, VoidCallback settled);
 

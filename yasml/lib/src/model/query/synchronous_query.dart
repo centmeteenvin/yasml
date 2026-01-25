@@ -4,7 +4,7 @@ import 'package:yasml/src/types/option.dart';
 import 'package:yasml/src/world/world.dart';
 
 abstract base class SynchronousQuery<T> extends Query<T> {
-  SynchronousQuery();
+  const SynchronousQuery();
 
   @override
   T initialState(world) {
@@ -22,4 +22,18 @@ abstract base class SynchronousQuery<T> extends Query<T> {
   }
 
   T query(World world);
+
+  const factory SynchronousQuery.create(T Function(World world) queryFn, {required String key}) =
+      SynchronousQueryFunction;
+}
+
+final class SynchronousQueryFunction<T> extends SynchronousQuery<T> {
+  final T Function(World world) queryFn;
+  @override
+  final String key;
+
+  const SynchronousQueryFunction(this.queryFn, {required this.key});
+
+  @override
+  T query(World world) => queryFn(world);
 }

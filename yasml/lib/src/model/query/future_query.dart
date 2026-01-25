@@ -6,6 +6,8 @@ import 'package:yasml/src/types/option.dart';
 import 'package:yasml/src/world/world.dart';
 
 abstract base class FutureQuery<T> extends Query<AsyncValue<T>> {
+  const FutureQuery();
+
   @override
   AsyncValue<T> initialState(World world) => AsyncLoading();
 
@@ -34,4 +36,19 @@ abstract base class FutureQuery<T> extends Query<AsyncValue<T>> {
   }
 
   Future<T> query(World world);
+
+  const factory FutureQuery.create(Future<T> Function(World world) queryFn, {required String key}) =
+      FutureQueryFunction;
+}
+
+final class FutureQueryFunction<T> extends FutureQuery<T> {
+  final Future<T> Function(World world) queryFn;
+
+  @override
+  final String key;
+
+  const FutureQueryFunction(this.queryFn, {required this.key});
+
+  @override
+  Future<T> query(World world) => queryFn(world);
 }

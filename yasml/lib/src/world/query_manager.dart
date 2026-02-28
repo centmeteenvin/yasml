@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:yasml/src/model/query/query.dart';
 import 'package:yasml/src/model/query/query_container.dart';
 import 'package:yasml/src/observer/events.dart';
@@ -8,25 +10,43 @@ import 'package:yasml/src/world/world.dart';
 /// The query manager handles the instantiation of query containers and the invalidation
 /// and settlings of those query containers.
 abstract interface class QueryManager {
+  /// Should be called by a [QueryContainer] when it's settled
+  /// state changes.
   void notifySettledChange();
+
+  /// True when all active [Query]s are settled
   bool get allSettled;
 
-  /// Creates a subscription and handles the query and composerContainers subscriptions
+  /// Subscribes a [QueryReachable] to a certain [Query] and returns
+  /// with the query's initialState
   QuerySubscription<T> subscribe<T>(Query<T> query, QueryReachable listeningContainer);
-  void unsubscribe(QuerySubscription subscription);
 
-  void invalidate(Set<Query> queries);
+  /// Unsubscribes a [QueryReachable] from a certain [Query]. If the query
+  /// has no more listeners after unsubscribing, the query will be disposed.
+  void unsubscribe(QuerySubscription<dynamic> subscription);
+
+  /// Invalidates the given [Query]s. If the [Query] still has listeners
+  /// it will be re-executed.
+  void invalidate(Set<Query<dynamic>> queries);
 
   /// Destroy all query containers
   Future<void> destroy();
 }
 
+/// The implementation of the [QueryManager]
 final class QueryManagerImpl implements QueryManager {
+  ///
   QueryManagerImpl(this.world);
+
+  ///
   final WorldImpl world;
 
-  final Registry<String, Query, QueryContainer> registry = Registry();
+  /// A Registry that contains a dictionary of [Query] : [QueryContainer].
+  final Registry<String, Query<dynamic>, QueryContainer<dynamic>> registry = Registry();
 
+  /// Contains the previous value of [QueryManager.allSettled]
+  ///
+  /// Is used to reduce notifications sent to the [World]
   Option<bool> previousSettledState = OptionEmpty();
 
   @override
@@ -44,9 +64,10 @@ final class QueryManagerImpl implements QueryManager {
     world.notifySettledChanged();
   }
 
+  /// Fetch the container for the query, if it does not exist create it instead.
   QueryContainer<T> get<T>(Query<T> query) {
     final option = registry.get(query);
-    if (option case OptionValue(:QueryContainer<T> value)) {
+    if (option case OptionValue(:final QueryContainer<T> value)) {
       return value;
     }
 
@@ -56,7 +77,8 @@ final class QueryManagerImpl implements QueryManager {
     return container;
   }
 
-  void remove(Query query) {
+  /// Delete the container of the query, if it was not present nothing happens
+  void remove(Query<dynamic> query) {
     registry.unregister(query);
   }
 
@@ -69,24 +91,25 @@ final class QueryManagerImpl implements QueryManager {
   }
 
   @override
-  void unsubscribe(QuerySubscription subscription) {
+  void unsubscribe(QuerySubscription<dynamic> subscription) {
     final container = subscription.queryContainer;
+
     container.removeListener(subscription);
     if (container.listeners.isEmpty) {
       world.emit(QueryContainerDisposedEvent(queryKey: container.query.key, reason: 'No Listeners'));
-      container.dispose();
+      unawaited(container.dispose());
       remove(container.query);
     }
   }
 
   @override
-  void invalidate(Set<Query> queries) {
+  void invalidate(Set<Query<dynamic>> queries) {
     if (queries.isEmpty) return;
 
     for (final query in queries) {
       final container = registry.get(query);
       if (container case OptionValue(value: final container)) {
-        container.invalidate();
+        unawaited(container.invalidate());
       }
     }
   }
@@ -94,7 +117,7 @@ final class QueryManagerImpl implements QueryManager {
   @override
   Future<void> destroy() async {
     registry.items
-        .expand((container) => container.listeners.cast<QuerySubscription>())
+        .expand((container) => container.listeners.cast<QuerySubscription<dynamic>>())
         .toList()
         .forEach(unsubscribe);
   }

@@ -116,17 +116,17 @@
       "dependencies": []
     },
     {
+      "name": "collection",
+      "version": "1.19.1",
+      "dependencies": []
+    },
+    {
       "name": "async",
       "version": "2.13.0",
       "dependencies": [
         "collection",
         "meta"
       ]
-    },
-    {
-      "name": "collection",
-      "version": "1.19.1",
-      "dependencies": []
     },
     {
       "name": "lints",

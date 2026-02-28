@@ -1,14 +1,21 @@
 import 'package:yasml/src/logging/logging.dart';
+import 'package:yasml/src/model/command.dart';
 import 'package:yasml/src/observer/events.dart';
 import 'package:yasml/src/observer/observer.dart';
+import 'package:yasml/src/view/view.dart';
+import 'package:yasml/src/view_model/mutation.dart';
 import 'package:yasml/src/world/world.dart';
 
+/// An Observer that logs all events to the [worldLog] logger or it's children.
+/// It is always present when running [World.create].
 final class LoggingObserver implements Observer {
+  /// Default constructor
   const LoggingObserver();
 
   @override
   Future<void> onDispose() async {}
 
+  /// The default formatting from a LogEvent to a string
   String baseLog(Event event) {
     return '${event.eventTime.toIso8601String()}: [${event.componentName}] -';
   }
@@ -31,6 +38,7 @@ final class LoggingObserver implements Observer {
     }
   }
 
+  /// Called when [Event] is of type [WorldEvent]
   void onWorldEvent(WorldEvent event) {
     switch (event) {
       case WorldCreatedEvent():
@@ -42,6 +50,7 @@ final class LoggingObserver implements Observer {
     }
   }
 
+  /// Called when [Event] is of type [QueryEvent]
   void onQueryEvent(QueryEvent event) {
     switch (event) {
       case QueryContainerCreatedEvent(:final reason):
@@ -63,6 +72,7 @@ final class LoggingObserver implements Observer {
     }
   }
 
+  /// Called when [Event] is of type [CompositionEvent]
   void onCompositionEvent(CompositionEvent event) {
     switch (event) {
       case CompositionContainerCreatedEvent(:final reason):
@@ -92,6 +102,8 @@ final class LoggingObserver implements Observer {
     }
   }
 
+  /// Triggered when an event at the [ViewWidget] level is triggered
+  /// Logs using the [viewLog]
   void onViewEvent(ViewEvent event) {
     switch (event) {
       case ViewBuildEvent():
@@ -103,6 +115,8 @@ final class LoggingObserver implements Observer {
     }
   }
 
+  /// Triggered when an event at the [Mutation] level is triggered
+  /// Logs using the [mutationLog]
   void onMutationEvent(MutationEvent event) {
     switch (event) {
       case MutationContainerCreatedEvent():
@@ -120,6 +134,8 @@ final class LoggingObserver implements Observer {
     }
   }
 
+  /// Triggered when an event at the [Command] level is triggered
+  /// Logs using the [commandLog]
   void onCommandEvent(CommandEvent event) {
     switch (event) {
       case CommandExecutedEvent():

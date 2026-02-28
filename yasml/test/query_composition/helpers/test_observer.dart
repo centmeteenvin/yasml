@@ -1,8 +1,6 @@
 /// Test observer for capturing events
 library;
 
-import 'package:yasml/src/observer/events.dart';
-import 'package:yasml/src/observer/observer.dart';
 import 'package:yasml/yasml.dart';
 
 /// Captures all events emitted by the world for testing

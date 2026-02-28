@@ -2,15 +2,13 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:yasml/src/observer/events.dart';
 import 'package:yasml/yasml.dart';
 
 /// Validates event sequences and properties
 class EventSequenceValidator {
+  EventSequenceValidator(this.events);
   final List<Event> events;
   int _currentIndex = 0;
-
-  EventSequenceValidator(this.events);
 
   /// Gets the current event without advancing
   Event get current => events[_currentIndex];
@@ -20,8 +18,7 @@ class EventSequenceValidator {
 
   /// Validates the next event is of type T
   T expectEvent<T extends Event>() {
-    expect(_currentIndex < events.length, true,
-        reason: 'Expected event of type $T but no more events available');
+    expect(_currentIndex < events.length, true, reason: 'Expected event of type $T but no more events available');
     final event = events[_currentIndex];
     expect(event, isA<T>(), reason: 'Expected $T but got ${event.runtimeType}');
     _currentIndex++;
@@ -29,8 +26,7 @@ class EventSequenceValidator {
   }
 
   /// Validates the next event of type T matches the predicate
-  T expectEventWhere<T extends Event>(bool Function(T) predicate,
-      [String? reason]) {
+  T expectEventWhere<T extends Event>(bool Function(T) predicate, [String? reason]) {
     final event = expectEvent<T>();
     expect(predicate(event), true, reason: reason ?? 'Event predicate failed for $event');
     return event;
@@ -51,9 +47,11 @@ class EventSequenceValidator {
 
   /// Verifies no more events remain
   void expectNoMoreEvents() {
-    expect(_currentIndex, events.length,
-        reason:
-            'Expected no more events but found ${remaining.length} remaining: $remaining');
+    expect(
+      _currentIndex,
+      events.length,
+      reason: 'Expected no more events but found ${remaining.length} remaining: $remaining',
+    );
   }
 
   /// Gets all events of type T
@@ -86,8 +84,7 @@ class QueryEventValidators {
     required Type listenerType,
   }) {
     expect(event.queryKey, key, reason: 'QueryContainerNewListenerEvent key mismatch');
-    expect(event.queryListenableType, listenerType,
-        reason: 'QueryContainerNewListenerEvent listener type mismatch');
+    expect(event.queryListenableType, listenerType, reason: 'QueryContainerNewListenerEvent listener type mismatch');
   }
 
   /// Validates QueryExecutedEvent properties
@@ -106,8 +103,7 @@ class QueryEventValidators {
     String? reason,
   }) {
     expect(event.queryKey, key, reason: 'QuerySetStateEvent key mismatch');
-    expect(stateValidator(event.newState), true,
-        reason: reason ?? 'QuerySetStateEvent state validation failed');
+    expect(stateValidator(event.newState), true, reason: reason ?? 'QuerySetStateEvent state validation failed');
   }
 
   /// Validates QuerySettledEvent properties
@@ -125,8 +121,11 @@ class QueryEventValidators {
     required Type listenerType,
   }) {
     expect(event.queryKey, key, reason: 'QueryContainerListenerRemovedEvent key mismatch');
-    expect(event.queryListenableType, listenerType,
-        reason: 'QueryContainerListenerRemovedEvent listener type mismatch');
+    expect(
+      event.queryListenableType,
+      listenerType,
+      reason: 'QueryContainerListenerRemovedEvent listener type mismatch',
+    );
   }
 
   /// Validates QueryContainerDisposedEvent properties

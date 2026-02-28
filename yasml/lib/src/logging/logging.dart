@@ -36,6 +36,12 @@
 library;
 
 import 'package:logging/logging.dart';
+import 'package:yasml/src/model/command.dart';
+import 'package:yasml/src/view/view.dart';
+import 'package:yasml/src/view_model/mutation.dart';
+import 'package:yasml/src/world/composition_manager.dart';
+import 'package:yasml/src/world/query_manager.dart';
+import 'package:yasml/src/world/world.dart';
 
 /// Root logger for all yasml events.
 final Logger yasmlLog = Logger('yasml');
@@ -55,4 +61,5 @@ final Logger mutationLog = Logger('yasml.world.mutation');
 /// Logger for [Command] execution and invalidation.
 final Logger commandLog = Logger('yasml.world.command');
 
+/// Logger for [ViewWidget] lifecycle and rendering events.
 final Logger viewLog = Logger('yasml.world.view');

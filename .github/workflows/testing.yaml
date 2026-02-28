@@ -40,7 +40,10 @@ jobs:
 
     strategy:
       matrix:
-        flutter-version: [ '3.22.3', '3.24.5', '3.27.4', '3.29.3', '3.32.8', '3.35.7', '3.38.10', '3.41.2']
+        # Minimum is Flutter 3.29+ (Dart 3.7+), required by pub workspaces
+        # (the `workspace:` key in root pubspec and `resolution: workspace` in yasml).
+        # Older versions cannot parse the workspace pubspec and hard-fail.
+        flutter-version: ['3.29.3', '3.32.8', '3.35.7', '3.38.10', '3.41.2']
       # Don't cancel siblings on first failure — we want to know
       # which Flutter versions pass and which don't.
       fail-fast: false
@@ -59,10 +62,12 @@ jobs:
           # Dramatically speeds up subsequent CI runs on the same version.
           cache: true
 
-      # Resolve dependencies using the checked-in lockfile.
-      # --enforce-lockfile fails the build if pubspec.lock is out of date,
-      # ensuring reproducible builds and catching forgotten lock updates in PRs.
-      - run: flutter pub get --enforce-lockfile
+      # Resolve dependencies. No --enforce-lockfile because:
+      # 1. yasml is a library — lockfiles shouldn't be committed for libraries,
+      #    since consumers resolve their own dependency versions.
+      # 2. Different Flutter/Dart SDKs resolve different versions, so a single
+      #    lockfile can't be valid across the entire matrix.
+      - run: flutter pub get
 
       # Static analysis catches lint violations, type errors, and
       # deprecated API usage before any code runs.

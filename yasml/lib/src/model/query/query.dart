@@ -14,8 +14,11 @@ typedef CleanupFn = FutureOr<void> Function();
 /// Aside from that it should also define an initial state
 @immutable
 abstract base class Query<T> implements RegisitryKey<String> {
+  /// @nodoc
+  const Query();
+
   /// A method that returns the initial state of the query.
-  /// It is called when the query container is created and when the query is disposed.
+  /// It is called when the query container is executed for the first time.
   T initialState(World world);
 
   /// A method that executes the query. It is called when the query container

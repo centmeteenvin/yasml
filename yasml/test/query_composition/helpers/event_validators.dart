@@ -88,10 +88,7 @@ class QueryEventValidators {
   }
 
   /// Validates QueryExecutedEvent properties
-  static void validateQueryExecuted(
-    QueryExecutedEvent event, {
-    required String key,
-  }) {
+  static void validateQueryExecuted(QueryExecutedEvent event, {required String key}) {
     expect(event.queryKey, key, reason: 'QueryExecutedEvent key mismatch');
   }
 
@@ -107,10 +104,7 @@ class QueryEventValidators {
   }
 
   /// Validates QuerySettledEvent properties
-  static void validateSettled(
-    QuerySettledEvent event, {
-    required String key,
-  }) {
+  static void validateSettled(QuerySettledEvent event, {required String key}) {
     expect(event.queryKey, key, reason: 'QuerySettledEvent key mismatch');
   }
 

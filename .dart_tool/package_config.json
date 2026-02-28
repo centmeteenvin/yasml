@@ -347,7 +347,7 @@
       "name": "yasml_example",
       "rootUri": "../yasml_example",
       "packageUri": "lib/",
-      "languageVersion": "3.10"
+      "languageVersion": "3.7"
     }
   ],
   "generator": "pub",

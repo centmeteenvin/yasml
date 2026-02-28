@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:yasml/yasml.dart';
@@ -9,59 +7,44 @@ Future<void> sleep() {
   return Future.delayed(Durations.long4);
 }
 
-base class AsyncCountQuery extends FutureQuery<int> {
-  @override
-  String get key => 'AsyncCountQuery';
-
-  @override
-  Future<int> query(World world) async {
+final asyncCountQuery = FutureQuery.create(
+  (world) async {
     await sleep();
     return counter;
-  }
-}
+  },
+  key: 'AsyncCountQuery',
+);
 
-class UpdateCountCommand implements Command<void> {
-  final int newValue;
-
-  UpdateCountCommand(this.newValue);
-
-  @override
-  Future<void> execute(World world) async {
+Command<void> updateAsyncCount(int newValue) => Command.create(
+  (world) async {
     await sleep();
     counter = newValue;
-  }
+  },
+  (_) => [asyncCountQuery],
+);
 
-  @override
-  List<Query<dynamic>> invalidate(void result) => [AsyncCountQuery()];
-}
+final asyncCountComposition = AsyncComposition.create(
+  (composer) => composer.watchFuture(asyncCountQuery),
+  key: 'AsyncCountComposition',
+);
 
-base class AsyncCountMutation extends Mutation<AsyncCountComposition> {
+base class AsyncCountMutation extends Mutation<AsyncComposition<int>> {
   const AsyncCountMutation({required super.commander});
 
   Future<void> increment(int current) async {
-    await commander.dispatch(UpdateCountCommand(current + 1));
+    await commander.dispatch(updateAsyncCount(current + 1));
   }
 
   Future<void> reset() async {
-    await commander.dispatch(UpdateCountCommand(0));
+    await commander.dispatch(updateAsyncCount(0));
   }
 }
 
-base class AsyncCountComposition extends AsyncComposition<int> {
-  @override
-  Future<int> compose(AsyncComposer composer) {
-    return composer.watchFuture(AsyncCountQuery());
-  }
-
-  @override
-  String get key => 'AsyncCountComposition';
-}
-
-base class AsyncCounterView extends ViewWidget<AsyncValue<int>, AsyncCountComposition, AsyncCountMutation> {
+base class AsyncCounterView extends ViewWidget<AsyncValue<int>, AsyncComposition<int>, AsyncCountMutation> {
   const AsyncCounterView({super.key, required super.world});
 
   @override
-  AsyncCountComposition get composition => AsyncCountComposition();
+  AsyncComposition<int> get composition => asyncCountComposition;
 
   @override
   MutationConstructor<AsyncCountMutation> get mutationConstructor =>

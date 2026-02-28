@@ -1,0 +1,78 @@
+# Continuous Integration for the yasml Flutter package.
+# Runs static analysis and tests across multiple Flutter versions
+# to ensure backward compatibility.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+    # Only run when files that affect the package actually change.
+    # Avoids burning CI minutes on documentation-only commits.
+    paths:
+      - 'yasml/**'
+      - '.github/workflows/testing.yaml'
+  pull_request:
+    paths:
+      - 'yasml/**'
+      - '.github/workflows/testing.yaml'
+
+# Cancel redundant runs: if a new commit is pushed to the same PR/branch,
+# the previous in-progress run is automatically cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Principle of least privilege — this workflow only reads code,
+# so we drop all write permissions.
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    # All `run` steps execute inside the yasml/ subdirectory,
+    # because this is a monorepo and the package lives there.
+    defaults:
+      run:
+        working-directory: yasml
+
+    strategy:
+      matrix:
+        # Minimum is Flutter 3.29+ (Dart 3.7+), required by pub workspaces
+        # (the `workspace:` key in root pubspec and `resolution: workspace` in yasml).
+        # Older versions cannot parse the workspace pubspec and hard-fail.
+        flutter-version: ['3.35.7', '3.38.10', '3.41.2']
+      # Don't cancel siblings on first failure — we want to know
+      # which Flutter versions pass and which don't.
+      fail-fast: false
+
+    steps:
+      # Clone the full repository so the workspace resolution
+      # in pubspec.yaml can find sibling packages.
+      - uses: actions/checkout@v4
+
+      # Install the specific Flutter SDK version from the matrix.
+      # Each version is tested in its own parallel job.
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ matrix.flutter-version }}
+          # Cache the Flutter SDK and pub dependencies between runs.
+          # Dramatically speeds up subsequent CI runs on the same version.
+          cache: true
+
+      # Resolve dependencies. No --enforce-lockfile because:
+      # 1. yasml is a library — lockfiles shouldn't be committed for libraries,
+      #    since consumers resolve their own dependency versions.
+      # 2. Different Flutter/Dart SDKs resolve different versions, so a single
+      #    lockfile can't be valid across the entire matrix.
+      - run: flutter pub get
+
+      # Static analysis catches lint violations, type errors, and
+      # deprecated API usage before any code runs.
+      - run: flutter analyze --fatal-infos
+
+      # Run the full test suite. --coverage generates an lcov report
+      # that can be uploaded to coverage services later if needed.
+      - run: flutter test --coverage

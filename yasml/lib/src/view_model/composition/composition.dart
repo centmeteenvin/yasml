@@ -8,6 +8,8 @@ import 'package:yasml/src/world/world.dart';
 /// This interface is the way you need to interact with your
 /// queries from a ComposerRuntime
 abstract interface class Composer {
+  /// watches the given query and returns with its value.
+  /// It will reactively update the value when the query is invalidated and refetched.
   T watch<T>(Query<T> query);
 }
 
@@ -15,8 +17,12 @@ abstract interface class Composer {
 /// to compose multiple queries into a given ViewModel
 /// Additionally it should also provider an initial value
 abstract base class Composition<T> implements RegisitryKey<String> {
+  /// The method that will be called to execute the composition.
+  ///  It should call the composer to watch the queries and set the state of the composition using the setState callback.
   void execute(Composer composer, ValueChanged<T> setState, VoidCallback setSettled);
 
+  /// The method that will be called to get the initial value of the composition.
+  /// It should return the initial value of the composition.
   T initialValue(World world, Composer composer);
 
   @override

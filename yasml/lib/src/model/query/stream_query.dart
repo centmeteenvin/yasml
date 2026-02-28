@@ -4,6 +4,8 @@ import 'package:yasml/src/types/async_value.dart';
 import 'package:yasml/src/types/option.dart';
 import 'package:yasml/src/world/world.dart';
 
+/// A base class for queries that are based on a Stream. It handles the common logic of
+/// managing the AsyncValue state and the cancellation of the Stream subscription when the query is invalidated
 abstract base class StreamQuery<T> extends Query<AsyncValue<T>> {
   @override
   AsyncValue<T> initialState(World world) {
@@ -34,5 +36,6 @@ abstract base class StreamQuery<T> extends Query<AsyncValue<T>> {
     return subscription.cancel;
   }
 
+  /// The method that will be called to execute the query. It should return a Stream that emits the query result.
   Stream<T> query(World world, VoidCallback setSettled);
 }

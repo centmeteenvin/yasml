@@ -11,8 +11,7 @@ base class GameView extends ViewWidget<AsyncValue<GameState>, GameComposition, G
   GameComposition get composition => GameComposition();
 
   @override
-  MutationConstructor<GameMutation> get mutationConstructor =>
-      (commander) => GameMutation(commander: commander);
+  MutationConstructor<GameMutation> get mutationConstructor => (commander) => GameMutation(commander: commander);
 
   @override
   Widget build(BuildContext context, AsyncValue<GameState> composition, Notifier<GameMutation> notifier) {
@@ -37,14 +36,14 @@ class GameViewData extends StatelessWidget {
 
     return Scaffold(
       body: Row(
-        crossAxisAlignment: .stretch,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
             flex: 2,
             child: Center(
               child: Container(
-                clipBehavior: .hardEdge,
-                decoration: BoxDecoration(shape: .circle, color: colorscheme.primaryContainer),
+                clipBehavior: Clip.hardEdge,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: colorscheme.primaryContainer),
 
                 child: Material(
                   color: Colors.transparent,

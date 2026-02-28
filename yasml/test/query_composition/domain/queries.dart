@@ -46,7 +46,7 @@ base class AchievementsQuery extends FutureQuery<List<Achievement>> {
 
   @override
   Future<List<Achievement>> query(World world) async {
-    await Future.delayed(const Duration(milliseconds: 10));
+    await Future<void>.delayed(const Duration(milliseconds: 10));
 
     return [
       Achievement(id: 'first_kill', title: 'First Blood', unlocked: true),

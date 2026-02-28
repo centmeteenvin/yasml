@@ -9,25 +9,44 @@ import 'package:yasml/src/world/world.dart';
 /// Handles the inizialitzation of compositionContainers as well as
 /// subscribing and settling of them
 abstract interface class CompositionManager {
+  /// True when all active compositions are settled
   bool get allSettled;
+
+  /// Should be called by a [CompositionContainer] when it's settled
+  /// state changes.
   void notifySettledChange();
 
+  /// Subscribe a [ViewWidget] to a certain [Composition] and returns the Compositions
+  /// initial state.
   CompositionSubscription<T> subscribe<T>(Composition<T> composition, ViewWidgetState<T, Composition<T>, void> widget);
-  void unsubscribe(CompositionSubscription subscription);
 
-  /// Invalidates all queries a composition is listening to
-  Future<void> refresh(Composition composition);
+  /// Unsubscribes a [ViewWidget] from a [Composition].
+  /// If the [Composition] has no listeners afterwards it will be disposed.
+  void unsubscribe(CompositionSubscription<dynamic> subscription);
+
+  /// Invalidates all queries a composition is listening to.
+  ///
+  /// Returns a Future that completes when the [World] is settled
+  Future<void> refresh(Composition<dynamic> composition);
 
   /// Destroy all composition containers
   Future<void> destroy();
 }
 
+/// The implementation of [CompositionManager]
 final class CompositionManagerImpl implements CompositionManager {
-  final WorldImpl world;
+  ///
   CompositionManagerImpl(this.world);
 
-  final Registry<String, Composition, CompositionContainer> registry = Registry();
+  ///
+  final WorldImpl world;
 
+  /// A Registry that contains a dictionary of [Composition] : [CompositionContainer].
+  final Registry<String, Composition<dynamic>, CompositionContainer<dynamic>> registry = Registry();
+
+  /// Contains the previous value of [CompositionManager.allSettled]
+  ///
+  /// Is used to reduce notifications sent to the [World]
   Option<bool> previousSettledState = OptionEmpty();
 
   @override
@@ -43,9 +62,14 @@ final class CompositionManagerImpl implements CompositionManager {
     world.notifySettledChanged();
   }
 
+  /// Fetches the [CompositionContainer] for the [Composition].
+  ///
+  /// If the [CompositionContainer] does not yet exist it will be created.
+  ///
+  /// Emits [CompositionContainerCreatedEvent].
   CompositionContainer<T> get<T>(Composition<T> composition) {
     final option = registry.get(composition);
-    if (option case OptionValue(value: CompositionContainer<T> container)) {
+    if (option case OptionValue(value: final CompositionContainer<T> container)) {
       return container;
     }
 
@@ -55,7 +79,9 @@ final class CompositionManagerImpl implements CompositionManager {
     return container;
   }
 
-  void remove(Composition composition) {
+  /// Deletes the [Composition] from the [CompositionManagerImpl.registry].
+  /// Can be safely called multiple times.
+  void remove(Composition<dynamic> composition) {
     registry.unregister(composition);
   }
 
@@ -71,8 +97,7 @@ final class CompositionManagerImpl implements CompositionManager {
 
   @override
   void unsubscribe(CompositionSubscription<dynamic> subscription) {
-    final container = subscription.compositionContainer;
-    container.removeListener(subscription);
+    final container = subscription.compositionContainer..removeListener(subscription);
 
     if (container.listeners.isEmpty) {
       registry.unregister(container.composition);
@@ -84,7 +109,7 @@ final class CompositionManagerImpl implements CompositionManager {
   }
 
   @override
-  Future<void> refresh(Composition composition) {
+  Future<void> refresh(Composition<dynamic> composition) {
     final container = get(composition);
     return container.refresh();
   }
@@ -92,7 +117,7 @@ final class CompositionManagerImpl implements CompositionManager {
   @override
   Future<void> destroy() async {
     registry.items
-        .expand((container) => container.listeners.cast<CompositionSubscription>())
+        .expand((container) => container.listeners.cast<CompositionSubscription<dynamic>>())
         .toList()
         .forEach(unsubscribe);
   }

@@ -2,7 +2,6 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:yasml/src/observer/events.dart';
 import 'package:yasml/yasml.dart';
 
 import '../domain/models.dart';
@@ -33,13 +32,11 @@ void main() {
 
       // 1. QueryContainerCreatedEvent
       final createdEvent = validator.expectEvent<QueryContainerCreatedEvent>();
-      QueryEventValidators.validateContainerCreated(createdEvent,
-          key: 'Rankings', reason: 'New Listerner');
+      QueryEventValidators.validateContainerCreated(createdEvent, key: 'Rankings', reason: 'New Listerner');
 
       // 2. QueryContainerNewListenerEvent
       final newListenerEvent = validator.expectEvent<QueryContainerNewListenerEvent>();
-      QueryEventValidators.validateNewListener(newListenerEvent,
-          key: 'Rankings', listenerType: MockQueryListener);
+      QueryEventValidators.validateNewListener(newListenerEvent, key: 'Rankings', listenerType: MockQueryListener);
 
       // 3. QueryExecutedEvent
       final executedEvent = validator.expectEvent<QueryExecutedEvent>();
@@ -51,25 +48,30 @@ void main() {
 
       // 5. QuerySetStateEvent (emitted when stream yields data, may be after settled)
       final setStateEvent = validator.skipToEvent<QuerySetStateEvent>();
-      QueryEventValidators.validateSetState(setStateEvent,
-          key: 'Rankings',
-          stateValidator: (state) =>
-              AsyncValueValidators.isAsyncDataWith<List<RankEntry>>(
-                  state, (data) => data.length == 3 && data.first.playerName == 'Alice'),
-          reason: 'Rankings should be AsyncData with correct data');
+      QueryEventValidators.validateSetState(
+        setStateEvent,
+        key: 'Rankings',
+        stateValidator: (state) => AsyncValueValidators.isAsyncDataWith<List<RankEntry>>(
+          state,
+          (data) => data.length == 3 && data.first.playerName == 'Alice',
+        ),
+        reason: 'Rankings should be AsyncData with correct data',
+      );
 
       // Cleanup
       world.queryManager.unsubscribe(subscription);
 
       // 6. QueryContainerListenerRemovedEvent
       final listenerRemovedEvent = validator.skipToEvent<QueryContainerListenerRemovedEvent>();
-      QueryEventValidators.validateListenerRemoved(listenerRemovedEvent,
-          key: 'Rankings', listenerType: MockQueryListener);
+      QueryEventValidators.validateListenerRemoved(
+        listenerRemovedEvent,
+        key: 'Rankings',
+        listenerType: MockQueryListener,
+      );
 
       // 7. QueryContainerDisposedEvent
       final disposedEvent = validator.skipToEvent<QueryContainerDisposedEvent>();
-      QueryEventValidators.validateContainerDisposed(disposedEvent,
-          key: 'Rankings', reason: 'No Listeners');
+      QueryEventValidators.validateContainerDisposed(disposedEvent, key: 'Rankings', reason: 'No Listeners');
 
       await world.destroy();
     });

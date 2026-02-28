@@ -106,7 +106,7 @@ class AsyncCounterActions extends HookWidget {
     }
 
     return Column(
-      mainAxisSize: .min,
+      mainAxisSize: MainAxisSize.min,
       spacing: 12,
       children: [
         FloatingActionButton(onPressed: handleIncrement, child: Icon(Icons.plus_one)),

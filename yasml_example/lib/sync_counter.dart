@@ -60,15 +60,14 @@ base class SyncCountView extends ViewWidget<int, CountComposition, CountMutation
   CountComposition get composition => CountComposition();
 
   @override
-  MutationConstructor<CountMutation> get mutationConstructor =>
-      (dispatcher) => CountMutation(commander: dispatcher);
+  MutationConstructor<CountMutation> get mutationConstructor => (dispatcher) => CountMutation(commander: dispatcher);
 
   @override
   Widget build(BuildContext context, int current, Notifier<CountMutation> notifier) {
     return Scaffold(
       body: Center(child: Text(current.toString())),
       floatingActionButton: Column(
-        mainAxisSize: .min,
+        mainAxisSize: MainAxisSize.min,
         spacing: 12,
         children: [
           FloatingActionButton(

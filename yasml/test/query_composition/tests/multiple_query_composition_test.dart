@@ -23,9 +23,7 @@ void main() {
       await world.settled;
 
       // Count queries created so far
-      var createdCount = observer.events
-          .whereType<QueryContainerCreatedEvent>()
-          .length;
+      final createdCount = observer.events.whereType<QueryContainerCreatedEvent>().length;
       expect(createdCount, 3, reason: 'First view creates 3 unique queries');
 
       observer.events.clear();
@@ -35,9 +33,7 @@ void main() {
       final sub2Achievements = world.queryManager.subscribe(AchievementsQuery(), MockQueryListener());
 
       // No new queries should be created!
-      final newCreatedEvents = observer.events
-          .whereType<QueryContainerCreatedEvent>()
-          .toList();
+      final newCreatedEvents = observer.events.whereType<QueryContainerCreatedEvent>().toList();
 
       expect(
         newCreatedEvents.isEmpty,

@@ -341,7 +341,7 @@
       "name": "yasml",
       "rootUri": "../yasml",
       "packageUri": "lib/",
-      "languageVersion": "3.10"
+      "languageVersion": "3.7"
     },
     {
       "name": "yasml_example",

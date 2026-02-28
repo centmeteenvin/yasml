@@ -17,6 +17,9 @@ abstract interface class Composer {
 /// to compose multiple queries into a given ViewModel
 /// Additionally it should also provider an initial value
 abstract base class Composition<T> implements RegisitryKey<String> {
+  /// @nodoc
+  const Composition();
+
   /// The method that will be called to execute the composition.
   ///  It should call the composer to watch the queries and set the state of the composition using the setState callback.
   void execute(Composer composer, ValueChanged<T> setState, VoidCallback setSettled);

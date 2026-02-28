@@ -30,6 +30,7 @@ The type system enforces the architecture: if it compiles, the data flow is corr
 - [Plugins — extending the World](#plugins--extending-the-world)
 - [Observers — reacting to events](#observers--reacting-to-events)
 - [Debugging & logging](#debugging--logging)
+- [Class-based API — when you need it](#class-based-api--when-you-need-it)
 - [API reference](#api-reference)
 
 ---
@@ -43,77 +44,61 @@ The smallest useful yasml app has exactly five moving parts: a **Query**, a **Co
 ```dart
 int count = 0; // the source of truth (a database, an API, a variable — anything)
 
-base class CountQuery extends SynchronousQuery<int> {
-  @override
-  String get key => (CountQuery).toString();
-
-  @override
-  int query(World world) => count;
-}
+final countQuery = SynchronousQuery.create(
+  (world) => count,
+  key: 'CountQuery',
+);
 ```
 
-A `SynchronousQuery<T>` implements one method: `T query(World)`. The `key` uniquely identifies this query for caching and invalidation.
+`SynchronousQuery.create` takes a function `T Function(World)` and a cache key. The function says *what* to fetch — in this case, the current count. The key uniquely identifies this query for caching and invalidation.
 
 ### 2. Command — how does the data change?
 
 ```dart
-class UpdateCountCommand implements Command<void> {
-  final int newValue;
-  UpdateCountCommand({required this.newValue});
-
-  @override
-  FutureOr<void> execute(World world) {
-    count = newValue;
-  }
-
-  @override
-  List<Query<dynamic>> invalidate(void result) => [CountQuery()];
-}
+Command<void> updateCount(int newValue) => Command.create(
+  (world) { count = newValue; },
+  (_) => [countQuery],
+);
 ```
 
-`execute` performs the mutation. `invalidate` returns the list of queries that are now stale — the world will automatically refetch them.
+`updateCount` is a function that returns a new `Command`. The first argument is the execute function (the side-effect), the second declares which queries the command invalidates. After execution, the world automatically refetches every listed query.
 
 ### 3. Composition — what does the view need?
 
 ```dart
-base class CountComposition extends SynchronousComposition<int> {
-  @override
-  String get key => (CountComposition).toString();
-
-  @override
-  int compose(Composer composer) {
-    return composer.watch(CountQuery());
-  }
-}
+final countComposition = SynchronousComposition.create(
+  (composer) => composer.watch(countQuery),
+  key: 'CountComposition',
+);
 ```
 
-`compose` watches one or more queries and returns the projected state. When any watched query is invalidated, the composition re-runs automatically.
+`SynchronousComposition.create` watches one or more queries and projects them into view-model state. When any watched query is invalidated, the composition re-runs automatically.
 
 ### 4. Mutation — what can the user do?
 
 ```dart
-base class CountMutation extends Mutation<CountComposition> {
+base class CountMutation extends Mutation<SynchronousComposition<int>> {
   const CountMutation({required super.commander});
 
   Future<void> increment(int current) =>
-      commander.dispatch(UpdateCountCommand(newValue: current + 1));
+      commander.dispatch(updateCount(current + 1));
 
   Future<void> reset() =>
-      commander.dispatch(UpdateCountCommand(newValue: 0));
+      commander.dispatch(updateCount(0));
 }
 ```
 
-Mutations are the **only** way the UI triggers state changes. `commander.dispatch` executes the command, collects invalidations, and waits for the world to settle before returning.
+Mutations are the **only** way the UI triggers state changes. They are always class-based because they define named methods — the typed contract between the view and the state layer. `commander.dispatch` executes the command, collects invalidations, and waits for the world to settle before returning.
 
 ### 5. View — put it on screen
 
 ```dart
 base class SyncCountView
-    extends ViewWidget<int, CountComposition, CountMutation> {
+    extends ViewWidget<int, SynchronousComposition<int>, CountMutation> {
   const SyncCountView({super.key, required super.world});
 
   @override
-  CountComposition get composition => CountComposition();
+  SynchronousComposition<int> get composition => countComposition;
 
   @override
   MutationConstructor<CountMutation> get mutationConstructor =>
@@ -144,7 +129,7 @@ base class SyncCountView
 
 `ViewWidget<T, C, M>` binds three types together:
 - `T` — the composition state type (`int`)
-- `C` — the composition (`CountComposition`)
+- `C` — the composition (`SynchronousComposition<int>`)
 - `M` — the mutation (`CountMutation`)
 
 Get any of these wrong and the compiler rejects the code.
@@ -205,75 +190,65 @@ The critical guarantee: `runMutation` does not return until the world has comple
 
 ## Keys & identity
 
-Every query and composition requires a `String get key`. This key is **not** a magic string — it is the identity used by the world's internal registry to cache and deduplicate instances. Two query objects with the same key are the same query. This is what allows `composer.watch(CountQuery())` to work — every call creates a new Dart object, but the registry recognizes them as the same query by key.
+Every query and composition requires a `key` — a string that uniquely identifies it in the world's internal registry. Two query objects with the same key are the same query. This is what allows the world to cache, deduplicate, and invalidate correctly.
 
-The recommended pattern is to derive the key from the class type:
+With the functional API, the key is a parameter you provide:
 
 ```dart
-@override
-String get key => (CountQuery).toString();
+final countQuery = SynchronousQuery.create(
+  (world) => count,
+  key: 'CountQuery',
+);
 ```
-
-The parentheses matter. `(CountQuery)` is a Dart type literal — wrapping it in parentheses and calling `.toString()` produces the string `"CountQuery"`. This is refactor-safe: rename the class and the key updates automatically.
 
 For parameterized queries (see next section), include the parameter in the key so each variant is cached separately:
 
 ```dart
-@override
-String get key => '${(UserByIdQuery).toString()}/$id';
+FutureQuery<User> userById(String id) => FutureQuery.create(
+  (world) async { /* ... */ },
+  key: 'UserByIdQuery/$id',
+);
 ```
+
+`userById('1')` and `userById('2')` produce queries with different keys — they are independent cache entries. Invalidating one does not affect the other.
 
 ---
 
 ## Parameterized queries
 
-Queries are descriptors — they are lightweight objects you instantiate wherever you need them. To make a query dependent on input data, add a field to the class, just like you pass data to a command:
+Queries are descriptors — lightweight objects you create wherever you need them. To make a query depend on input data, wrap the factory in a function:
 
 ```dart
-base class UserByIdQuery extends FutureQuery<User> {
-  final String id;
-  UserByIdQuery({required this.id});
-
-  @override
-  String get key => '${(UserByIdQuery).toString()}/$id';
-
-  @override
-  Future<User> query(World world) async {
+FutureQuery<User> userById(String id) => FutureQuery.create(
+  (world) async {
     final response = await world.dio.get('/users/$id');
     return User.fromJson(response.data);
-  }
-}
+  },
+  key: 'UserByIdQuery/$id',
+);
 ```
 
-Because the key includes the `id`, `UserByIdQuery(id: '1')` and `UserByIdQuery(id: '2')` are two independent entries in the cache. Invalidating one does not affect the other.
+The parameter is captured in the closure and included in the key. Each call creates a query with the right identity — the caching system deduplicates by key.
 
-Pass parameters through the composition, which receives them from the view:
+Pass parameters through the composition the same way:
 
 ```dart
-base class UserComposition extends AsyncComposition<User> {
-  final String userId;
-  UserComposition({required this.userId});
-
-  @override
-  String get key => '${(UserComposition).toString()}/$userId';
-
-  @override
-  Future<User> compose(AsyncComposer composer) {
-    return composer.watchFuture(UserByIdQuery(id: userId));
-  }
-}
+AsyncComposition<User> userComposition(String userId) => AsyncComposition.create(
+  (composer) => composer.watchFuture(userById(userId)),
+  key: 'UserComposition/$userId',
+);
 ```
 
 The view wires it together — the composition getter is the injection point:
 
 ```dart
 base class UserDetailView
-    extends ViewWidget<AsyncValue<User>, UserComposition, UserMutation> {
+    extends ViewWidget<AsyncValue<User>, AsyncComposition<User>, UserMutation> {
   final String userId;
   const UserDetailView({super.key, required super.world, required this.userId});
 
   @override
-  UserComposition get composition => UserComposition(userId: userId);
+  AsyncComposition<User> get composition => userComposition(userId);
 
   @override
   MutationConstructor<UserMutation> get mutationConstructor =>
@@ -299,45 +274,37 @@ When data comes from a network call or database, use `FutureQuery<T>`. The compo
 ### FutureQuery
 
 ```dart
-base class AsyncCountQuery extends FutureQuery<int> {
-  @override
-  String get key => (AsyncCountQuery).toString();
-
-  @override
-  Future<int> query(World world) async {
+final asyncCountQuery = FutureQuery.create(
+  (world) async {
     final response = await world.dio.get('/count');
     return response.data['count'] as int;
-  }
-}
+  },
+  key: 'AsyncCountQuery',
+);
 ```
 
-You implement `Future<T> query(World)`. The library handles cancellation, state transitions (`AsyncLoading` → `AsyncData` or `AsyncError`), and settlement signalling.
+You provide a `Future<T> Function(World)`. The library handles cancellation, state transitions (`AsyncLoading` → `AsyncData` or `AsyncError`), and settlement signalling.
 
 ### AsyncComposition
 
 ```dart
-base class AsyncCountComposition extends AsyncComposition<int> {
-  @override
-  String get key => (AsyncCountComposition).toString();
-
-  @override
-  Future<int> compose(AsyncComposer composer) {
-    return composer.watchFuture(AsyncCountQuery());
-  }
-}
+final asyncCountComposition = AsyncComposition.create(
+  (composer) => composer.watchFuture(asyncCountQuery),
+  key: 'AsyncCountComposition',
+);
 ```
 
-`AsyncComposition<T>` composes async queries. Use `composer.watchFuture(query)` for `FutureQuery` and `composer.watchStream(query)` for `StreamQuery`. The composition state is `AsyncValue<T>`.
+`AsyncComposition.create` composes async queries. Use `composer.watchFuture(query)` for `FutureQuery` and `composer.watchStream(query)` for `StreamQuery`. The composition state is `AsyncValue<T>`.
 
 ### The view handles every state
 
 ```dart
 base class AsyncCounterView
-    extends ViewWidget<AsyncValue<int>, AsyncCountComposition, AsyncCountMutation> {
+    extends ViewWidget<AsyncValue<int>, AsyncComposition<int>, AsyncCountMutation> {
   const AsyncCounterView({super.key, required super.world});
 
   @override
-  AsyncCountComposition get composition => AsyncCountComposition();
+  AsyncComposition<int> get composition => asyncCountComposition;
 
   @override
   MutationConstructor<AsyncCountMutation> get mutationConstructor =>
@@ -373,17 +340,14 @@ base class AsyncCounterView
 For real-time data (WebSockets, game loops, Firestore snapshots), use `StreamQuery<T>`.
 
 ```dart
-base class GameQuery extends StreamQuery<GameState> {
-  @override
-  String get key => (GameQuery).toString();
-
-  @override
-  Stream<GameState> query(World world, VoidCallback setSettled) {
+final gameQuery = StreamQuery<GameState>.create(
+  (world, setSettled) {
     final stream = world.game.stream(Duration(milliseconds: 100));
     stream.first.then((_) => setSettled());
     return stream;
-  }
-}
+  },
+  key: 'GameQuery',
+);
 ```
 
 Unlike `FutureQuery`, a `StreamQuery` receives a `setSettled` callback. You decide when the query should be considered settled — typically after the first emission. Each subsequent emission updates the state and notifies compositions.
@@ -391,15 +355,10 @@ Unlike `FutureQuery`, a `StreamQuery` receives a `setSettled` callback. You deci
 Stream compositions use `watchStream`:
 
 ```dart
-base class GameComposition extends AsyncComposition<GameState> {
-  @override
-  String get key => (GameComposition).toString();
-
-  @override
-  Future<GameState> compose(AsyncComposer composer) async {
-    return await composer.watchStream(GameQuery());
-  }
-}
+final gameComposition = AsyncComposition<GameState>.create(
+  (composer) => composer.watchStream(gameQuery),
+  key: 'GameComposition',
+);
 ```
 
 ---
@@ -409,15 +368,10 @@ base class GameComposition extends AsyncComposition<GameState> {
 Not every command needs to trigger a refetch. Stream-driven queries update via the stream itself, so the command can return an empty invalidation list:
 
 ```dart
-class GameClickCommand implements Command<void> {
-  @override
-  FutureOr<void> execute(World world) {
-    world.game.click();
-  }
-
-  @override
-  List<Query<dynamic>> invalidate(void result) => [];
-}
+final gameClickCommand = Command<void>.create(
+  (world) { world.game.click(); },
+  (_) => [],
+);
 ```
 
 The command fires a side-effect (sending a click event into the game loop), and the `StreamQuery` picks up the resulting state change through the stream.
@@ -433,8 +387,8 @@ base class SomeMutation extends Mutation<SomeComposition> {
   const SomeMutation({required super.commander});
 
   Future<void> doSomething() async {
-    final currentUser = await commander.read(UserByIdQuery(id: '1'));
-    await commander.dispatch(UpdateCommand(userId: currentUser.id));
+    final currentUser = await commander.read(userById('1'));
+    await commander.dispatch(updateUser(currentUser.id, {'active': true}));
   }
 }
 ```
@@ -480,19 +434,13 @@ extension DioPluginExtension on World {
 Now any query can use `world.dio` to make HTTP calls:
 
 ```dart
-base class UserByIdQuery extends FutureQuery<User> {
-  final String id;
-  UserByIdQuery({required this.id});
-
-  @override
-  String get key => '${(UserByIdQuery).toString()}/$id';
-
-  @override
-  Future<User> query(World world) async {
+FutureQuery<User> userById(String id) => FutureQuery.create(
+  (world) async {
     final response = await world.dio.get('/users/$id');
     return User.fromJson(response.data);
-  }
-}
+  },
+  key: 'UserByIdQuery/$id',
+);
 ```
 
 Register plugins at world creation:
@@ -591,29 +539,77 @@ void main() {
 
 ---
 
+## Class-based API — when you need it
+
+The functional factories (`.create`) cover the vast majority of use cases. All queries, commands, and compositions can alternatively extend the corresponding base classes:
+
+```dart
+base class CountQuery extends SynchronousQuery<int> {
+  @override
+  String get key => (CountQuery).toString();
+
+  @override
+  int query(World world) => count;
+}
+```
+
+```dart
+class UpdateCountCommand implements Command<void> {
+  final int newValue;
+  UpdateCountCommand({required this.newValue});
+
+  @override
+  FutureOr<void> execute(World world) {
+    count = newValue;
+  }
+
+  @override
+  List<Query<dynamic>> invalidate(void result) => [CountQuery()];
+}
+```
+
+```dart
+base class CountComposition extends SynchronousComposition<int> {
+  @override
+  String get key => (CountComposition).toString();
+
+  @override
+  int compose(Composer composer) => composer.watch(CountQuery());
+}
+```
+
+The class-based approach trades brevity for two things the functional API cannot provide:
+
+- **Stricter type discrimination.** Two functional compositions that return the same type (e.g. `SynchronousComposition<int>`) are interchangeable in the type system — the compiler cannot stop you from passing the wrong one to a view. A named class like `CountComposition` is its own type, so `ViewWidget<int, CountComposition, CountMutation>` rejects any other composition at compile time.
+- **Refactor-safe keys.** Deriving the key from the class type literal — `(CountComposition).toString()` — means renaming the class automatically updates the key. With the functional API, keys are plain strings that you maintain by hand.
+
+The class-based API is fully interchangeable with the functional API — both produce objects that the world handles identically.
+
+---
+
 ## API reference
 
 ### Query types
 
-| Base class | You implement | State type | Use when |
+| Factory | You provide | State type | Use when |
 |---|---|---|---|
-| `SynchronousQuery<T>` | `T query(World)` | `T` | Data is available immediately |
-| `FutureQuery<T>` | `Future<T> query(World)` | `AsyncValue<T>` | Data comes from an async call |
-| `StreamQuery<T>` | `Stream<T> query(World, VoidCallback setSettled)` | `AsyncValue<T>` | Data is a continuous stream |
+| `SynchronousQuery.create` | `T Function(World), key` | `T` | Data is available immediately |
+| `FutureQuery.create` | `Future<T> Function(World), key` | `AsyncValue<T>` | Data comes from an async call |
+| `StreamQuery.create` | `Stream<T> Function(World, VoidCallback), key` | `AsyncValue<T>` | Data is a continuous stream |
 
 ### Composition types
 
-| Base class | You implement | Watches via | State type |
+| Factory | You provide | Watches via | State type |
 |---|---|---|---|
-| `SynchronousComposition<T>` | `T compose(Composer)` | `composer.watch(query)` | `T` |
-| `AsyncComposition<T>` | `Future<T> compose(AsyncComposer)` | `composer.watchFuture(query)` / `composer.watchStream(query)` | `AsyncValue<T>` |
+| `SynchronousComposition.create` | `T Function(Composer), key` | `composer.watch(query)` | `T` |
+| `AsyncComposition.create` | `Future<T> Function(AsyncComposer), key` | `composer.watchFuture(q)` / `composer.watchStream(q)` | `AsyncValue<T>` |
 
 ### Command
 
-| Method | Purpose |
+| Parameter | Purpose |
 |---|---|
-| `FutureOr<T> execute(World)` | Perform the side-effect |
-| `List<Query> invalidate(T result)` | Declare which queries are now stale |
+| `FutureOr<T> Function(World) execute` | Perform the side-effect |
+| `List<Query> Function(T) invalidate` | Declare which queries are now stale |
 
 ### Mutation
 
@@ -627,7 +623,7 @@ void main() {
 | Type parameter | Meaning |
 |---|---|
 | `T` | The composition state type |
-| `C extends Composition<T>` | The composition class |
+| `C extends Composition<T>` | The composition type |
 | `M extends Mutation<C>` | The mutation class |
 
 | Abstract getter/method | Purpose |

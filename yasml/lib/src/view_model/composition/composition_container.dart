@@ -11,16 +11,29 @@ import 'package:yasml/src/types/option.dart';
 import 'package:yasml/src/view/view.dart';
 import 'package:yasml/src/view_model/composition/async_composition.dart';
 import 'package:yasml/src/view_model/composition/composition.dart';
+import 'package:yasml/src/world/query_manager.dart';
 import 'package:yasml/src/world/world.dart';
 
-/// Similar to the QueryContainer, the ComposerContainer
-/// Manages the Composed state and subscribes themselves to the world
+/// Similar to the [QueryContainer], the [CompositionContainer]
+/// Manages the [Composition] state and subscribes themselves to the [World]
 final class CompositionContainer<T> implements AsyncComposer, QueryReachable {
+  /// Initialize the [CompositionContainer] with a [Composition] and a [World]
+  ///
+  /// No logic is run on initialization.
+  CompositionContainer({required this.composition, required this.world});
+
+  /// The [Composition] associated with the [CompositionContainer]
   final Composition<T> composition;
+
+  /// The [World] in which the [CompositionContainer] exists.
   final World world;
 
   Option<T> _state = OptionEmpty();
 
+  /// The current state of the [Composition].
+  ///
+  /// if [CompositionContainer._state] is not yet initialized the [Composition.initialValue]
+  /// method is returned. Meanwhile the [CompositionContainer._state] will also be set.
   T get state {
     if (!_state.hasValue) {
       _state = OptionValue(composition.initialValue(world, this));
@@ -28,6 +41,9 @@ final class CompositionContainer<T> implements AsyncComposer, QueryReachable {
     return _state.requireValue;
   }
 
+  /// Updateds the [CompositionContainer.state] and notifies all [CompositionContainer.listeners]
+  ///
+  /// Emits a [CompositionSetStateEvent]
   void setState(T newState) {
     world.emit(CompositionSetStateEvent(compositionKey: composition.key, newState: newState));
     _state = OptionValue(newState);
@@ -36,11 +52,14 @@ final class CompositionContainer<T> implements AsyncComposer, QueryReachable {
     }
   }
 
+  /// Wheter the [CompositionContainer] has settled.
+  /// A settled state is an indication from the developer that
+  /// The most interesting value is now being present in the [CompositionContainer.state]
   bool isSettled = false;
 
-  CompositionContainer({required this.composition, required this.world});
-
-  final Set<QuerySubscription> querySubscriptions = HashSet();
+  /// The current Set of [Query] that are being watched by the [CompositionContainer.composition]
+  /// represented by a set of [QuerySubscription]
+  final Set<QuerySubscription<dynamic>> querySubscriptions = HashSet();
 
   @override
   QueryT watch<QueryT>(Query<QueryT> query) {
@@ -79,7 +98,7 @@ final class CompositionContainer<T> implements AsyncComposer, QueryReachable {
     await container.settled;
 
     return switch (container.state) {
-      AsyncLoading() => throw StateError("Aysnchronous query ${container.query.key} still in loading after settling"),
+      AsyncLoading() => throw StateError('Aysnchronous query ${container.query.key} still in loading after settling'),
       AsyncError(:final error, :final stackTrace) => Error.throwWithStackTrace(error, stackTrace ?? StackTrace.current),
       AsyncData(:final data) => data,
     };
@@ -104,14 +123,21 @@ final class CompositionContainer<T> implements AsyncComposer, QueryReachable {
     await container.settled;
 
     return switch (container.state) {
-      AsyncLoading() => throw StateError("Aysnchronous query ${container.query.key} after settling"),
+      AsyncLoading() => throw StateError('Aysnchronous query ${container.query.key} after settling'),
       AsyncError(:final error, :final stackTrace) => Error.throwWithStackTrace(error, stackTrace ?? StackTrace.current),
       AsyncData(:final data) => data,
     };
   }
 
+  /// The set of [ViewWidget] that are watching this [CompositionContainer.composition]
+  /// represented by a set of [CompositionSubscription]
   final Set<CompositionSubscription<T>> listeners = HashSet();
 
+  /// Subscribes a [ViewWidget] to the [CompositionContainer.composition]
+  /// Emits a [CompositionContainerNewListenerEvent] if the listener was new
+  ///
+  /// When the [CompositionContainer.state] has not yet been initialized runs
+  /// the [CompositionContainer.execute] methods
   void addListener(CompositionSubscription<T> subscription) {
     final didAdd = listeners.add(subscription);
     if (didAdd) {
@@ -128,6 +154,9 @@ final class CompositionContainer<T> implements AsyncComposer, QueryReachable {
     }
   }
 
+  /// Removes a [ViewWidget] from the [CompositionContainer.composition].
+  ///
+  /// Emits a [CompositionContainerListenerRemovedEvent] if the listener was new
   void removeListener(CompositionSubscription<T> subscription) {
     final didRemove = listeners.remove(subscription);
     if (didRemove) {
@@ -140,6 +169,9 @@ final class CompositionContainer<T> implements AsyncComposer, QueryReachable {
     }
   }
 
+  /// Cleans up all the associated resources from the [CompositionContainer]
+  /// For each [CompositionContainer.querySubscriptions] emits a [CompositionUnsubscribeEvent]
+  /// and call [QueryManager.unsubscribe].
   void dispose() {
     for (final querySubscription in querySubscriptions) {
       world.emit(
@@ -154,7 +186,6 @@ final class CompositionContainer<T> implements AsyncComposer, QueryReachable {
     // Compositions should not have a dispose function because no world resources should ever be bound to them
   }
 
-  /// Call this to notify that the composition needs to be re-evaluated
   @override
   void notify() {
     if (listeners.isEmpty) {
@@ -163,6 +194,8 @@ final class CompositionContainer<T> implements AsyncComposer, QueryReachable {
     execute();
   }
 
+  /// Starts the execution of the [Composition.execute] method while emitting a
+  /// [CompositionExecutedEvent].
   void execute() {
     world.emit(CompositionExecutedEvent(compositionKey: composition.key));
 
@@ -174,6 +207,10 @@ final class CompositionContainer<T> implements AsyncComposer, QueryReachable {
     });
   }
 
+  /// Invalidates all [CompositionContainer.querySubscriptions] queries and emits a
+  /// [CompositionRefreshEvent].
+  ///
+  /// Returns a Future that resolves when the [CompositionContainer.world] is settled.
   Future<void> refresh() {
     final subscribedQueries = querySubscriptions.map((sub) => sub.queryContainer.query).toSet();
     world.emit(CompositionRefreshEvent(compositionKey: composition.key, queriesToInvalidate: subscribedQueries));
@@ -191,11 +228,16 @@ final class CompositionContainer<T> implements AsyncComposer, QueryReachable {
   }
 }
 
+/// Represents a Listening relation between a [ViewWidget] and a [CompositionContainer]
 @immutable
 final class CompositionSubscription<T> {
+  ///
   const CompositionSubscription({required this.compositionContainer, required this.widget});
 
+  /// the [CompositionContainer] that is being subscribed to
   final CompositionContainer<T> compositionContainer;
+
+  /// the [ViewWidget] that is listening
   final ViewWidgetState<T, void, void> widget;
 
   @override

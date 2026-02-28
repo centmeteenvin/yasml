@@ -6,10 +6,9 @@ import 'package:yasml/yasml.dart';
 
 /// Validates event sequences and properties
 class EventSequenceValidator {
+  EventSequenceValidator(this.events);
   final List<Event> events;
   int _currentIndex = 0;
-
-  EventSequenceValidator(this.events);
 
   /// Gets the current event without advancing
   Event get current => events[_currentIndex];

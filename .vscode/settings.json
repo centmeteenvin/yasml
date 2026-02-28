@@ -4,4 +4,7 @@
         "source.organizeImports": "explicit"
     },
     "dart.lineLength": 120,
+    "conventionalCommits.scopes": [
+        "yasml"
+    ],
 }

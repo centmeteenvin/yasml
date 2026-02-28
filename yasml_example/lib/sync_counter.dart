@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:yasml/yasml.dart';
 
@@ -7,47 +5,33 @@ int count = 0;
 
 final countQuery = SynchronousQuery.create((world) => count, key: 'CountQuery');
 
-class UpdateCountCommand implements Command<void> {
-  UpdateCountCommand({required this.newValue});
-  final int newValue;
+Command<void> updateCount(int newValue) => Command.create(
+  (world) { count = newValue; },
+  (_) => [countQuery],
+);
 
-  @override
-  FutureOr<void> execute(World world) {
-    count = newValue;
-  }
+final countComposition = SynchronousComposition.create(
+  (composer) => composer.watch(countQuery),
+  key: 'CountComposition',
+);
 
-  @override
-  List<Query<dynamic>> invalidate(void result) => [countQuery];
-}
-
-base class CountMutation extends Mutation<CountComposition> {
+base class CountMutation extends Mutation<SynchronousComposition<int>> {
   const CountMutation({required super.commander});
 
   Future<void> increment(int current) {
-    return commander.dispatch(UpdateCountCommand(newValue: current + 1));
+    return commander.dispatch(updateCount(current + 1));
   }
 
   Future<void> reset() {
-    return commander.dispatch(UpdateCountCommand(newValue: 0));
+    return commander.dispatch(updateCount(0));
   }
 }
 
-base class CountComposition extends SynchronousComposition<int> {
-  @override
-  int compose(Composer composer) {
-    final count = composer.watch(countQuery);
-    return count;
-  }
-
-  @override
-  String get key => 'CountComposition';
-}
-
-base class SyncCountView extends ViewWidget<int, CountComposition, CountMutation> {
+base class SyncCountView extends ViewWidget<int, SynchronousComposition<int>, CountMutation> {
   const SyncCountView({super.key, required super.world});
 
   @override
-  CountComposition get composition => CountComposition();
+  SynchronousComposition<int> get composition => countComposition;
 
   @override
   MutationConstructor<CountMutation> get mutationConstructor => (dispatcher) => CountMutation(commander: dispatcher);

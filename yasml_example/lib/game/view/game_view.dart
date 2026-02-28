@@ -4,11 +4,11 @@ import 'package:yasml_example/game/game.dart';
 import 'package:yasml_example/game/view/game_view_buildings.dart';
 import 'package:yasml_example/game/view_model/game_view_model.dart';
 
-base class GameView extends ViewWidget<AsyncValue<GameState>, GameComposition, GameMutation> {
+base class GameView extends ViewWidget<AsyncValue<GameState>, AsyncComposition<GameState>, GameMutation> {
   const GameView({super.key, required super.world});
 
   @override
-  GameComposition get composition => GameComposition();
+  AsyncComposition<GameState> get composition => gameComposition;
 
   @override
   MutationConstructor<GameMutation> get mutationConstructor => (commander) => GameMutation(commander: commander);

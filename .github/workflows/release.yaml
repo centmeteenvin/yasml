@@ -1,10 +1,12 @@
 # Publishes a new version of yasml to pub.dev.
 #
 # Triggered manually via the Actions UI with a version bump selector.
-# Steps: bump version → generate changelog → validate → publish → push → release.
+# Steps: bump version → generate changelog → validate → push → publish → release.
 #
-# The "publish before push" pattern ensures that if publishing fails,
-# the remote repository remains untouched — no orphaned tags or commits.
+# The reusable dart-lang publish workflow requires the tag to exist on the
+# remote so it can match the OIDC token against the repository. Therefore we
+# push before publishing. If publishing fails the commit and tag are already
+# on the remote but can be reverted manually.
 
 name: Release
 
@@ -36,12 +38,14 @@ permissions:
   id-token: write    # OIDC token for pub.dev authentication
 
 jobs:
-  release:
-    name: Release
+  # ── Prepare: bump, changelog, validate, push ──────────────────────
+  prepare:
+    name: Prepare release
     runs-on: ubuntu-latest
-    # When dry_run is false, require approval via the pub.dev environment.
-    # When dry_run is true, no environment gate — runs immediately.
-    environment: ${{ inputs.dry_run == false && 'pub.dev' || '' }}
+    outputs:
+      new_version: ${{ steps.bump.outputs.new_version }}
+      new_tag: ${{ steps.bump.outputs.new_tag }}
+      old_version: ${{ steps.bump.outputs.old_version }}
     steps:
       # Full history is required for git-cliff to walk tags and generate
       # an accurate changelog across all versions.
@@ -120,28 +124,25 @@ jobs:
         run: dart pub publish --dry-run
         working-directory: yasml
 
-      # ── Publish (irreversible — remote still untouched) ────────
-      - name: Publish to pub.dev
-        if: inputs.dry_run == false
-        run: dart pub publish --force
-        working-directory: yasml
-
-      # ── Push (only after successful publish) ───────────────────
+      # ── Push (must happen before publish for OIDC verification) ─
       - name: Push commit and tag
         if: inputs.dry_run == false
         run: |
           git push origin HEAD:main
           git push origin "${{ steps.bump.outputs.new_tag }}"
 
-      # ── GitHub Release ─────────────────────────────────────────
-      - name: Create GitHub Release
+      # ── Upload release notes for later jobs ─────────────────────
+      # Copy to a known filename so the download step can reference it reliably.
+      - name: Upload release notes
         if: inputs.dry_run == false
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: >
-          gh release create "${{ steps.bump.outputs.new_tag }}"
-          --title "${{ steps.bump.outputs.new_tag }}"
-          --notes-file "${{ steps.release_notes.outputs.changelog }}"
+        run: cp "${{ steps.release_notes.outputs.changelog }}" /tmp/release-notes.md
+
+      - name: Upload release notes artifact
+        if: inputs.dry_run == false
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: /tmp/release-notes.md
 
       # ── Dry-run summary ────────────────────────────────────────
       - name: Dry-run summary
@@ -167,3 +168,38 @@ jobs:
           echo '```markdown' >> "$GITHUB_STEP_SUMMARY"
           cat "${{ steps.release_notes.outputs.changelog }}" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+  # ── Publish to pub.dev via reusable OIDC workflow ───────────────
+  publish:
+    name: Publish to pub.dev
+    needs: prepare
+    if: inputs.dry_run == false
+    permissions:
+      id-token: write
+    uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
+    with:
+      working-directory: yasml
+      environment: pub.dev
+
+  # ── GitHub Release (only after successful publish) ──────────────
+  github-release:
+    name: Create GitHub Release
+    needs: [prepare, publish]
+    if: inputs.dry_run == false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download release notes
+        uses: actions/download-artifact@v4
+        with:
+          name: release-notes
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "${{ needs.prepare.outputs.new_tag }}"
+          --repo "${{ github.repository }}"
+          --title "${{ needs.prepare.outputs.new_tag }}"
+          --notes-file release-notes.md

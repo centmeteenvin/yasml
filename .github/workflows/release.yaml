@@ -103,12 +103,10 @@ jobs:
         env:
           GITHUB_REPO: ${{ github.repository }}
 
-      # ── Validation ──────────────────────────────────────────────
-      - name: Validate package (dry-run)
-        run: dart pub publish --dry-run
-        working-directory: yasml
-
       # ── Commit (local only — not pushed yet) ───────────────────
+      # Commit before validation so `dart pub publish --dry-run`
+      # sees a clean git working tree and does not warn about
+      # modified files (pubspec.yaml, CHANGELOG.md).
       - name: Commit release
         run: |
           git config user.name "github-actions[bot]"
@@ -116,6 +114,11 @@ jobs:
           git add yasml/pubspec.yaml yasml/CHANGELOG.md
           git commit -m "chore(yasml): release ${{ steps.bump.outputs.new_version }}"
           git tag "${{ steps.bump.outputs.new_tag }}"
+
+      # ── Validation ──────────────────────────────────────────────
+      - name: Validate package (dry-run)
+        run: dart pub publish --dry-run
+        working-directory: yasml
 
       # ── Publish (irreversible — remote still untouched) ────────
       - name: Publish to pub.dev

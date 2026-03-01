@@ -16,36 +16,55 @@ void main() {
       observer.events.clear();
 
       // Phase 1: First set of subscriptions - simulate "View 1" using all 3 queries
-      final sub1Stats = world.queryManager.subscribe(PlayerStatsQuery(), MockQueryListener());
-      final sub1Rankings = world.queryManager.subscribe(RankingsStreamQuery(), MockQueryListener());
-      final sub1Achievements = world.queryManager.subscribe(AchievementsQuery(), MockQueryListener());
+      final sub1Stats = world.queryManager.subscribe(
+        PlayerStatsQuery(),
+        MockQueryListener(),
+      );
+      final sub1Rankings = world.queryManager.subscribe(
+        RankingsStreamQuery(),
+        MockQueryListener(),
+      );
+      final sub1Achievements = world.queryManager.subscribe(
+        AchievementsQuery(),
+        MockQueryListener(),
+      );
 
       await world.settled;
 
       // Count queries created so far
-      final createdCount = observer.events.whereType<QueryContainerCreatedEvent>().length;
+      final createdCount =
+          observer.events.whereType<QueryContainerCreatedEvent>().length;
       expect(createdCount, 3, reason: 'First view creates 3 unique queries');
 
       observer.events.clear();
 
       // Phase 2: Second set of subscriptions - "View 2" reuses rankings and achievements
-      final sub2Rankings = world.queryManager.subscribe(RankingsStreamQuery(), MockQueryListener());
-      final sub2Achievements = world.queryManager.subscribe(AchievementsQuery(), MockQueryListener());
+      final sub2Rankings = world.queryManager.subscribe(
+        RankingsStreamQuery(),
+        MockQueryListener(),
+      );
+      final sub2Achievements = world.queryManager.subscribe(
+        AchievementsQuery(),
+        MockQueryListener(),
+      );
 
       // No new queries should be created!
-      final newCreatedEvents = observer.events.whereType<QueryContainerCreatedEvent>().toList();
+      final newCreatedEvents =
+          observer.events.whereType<QueryContainerCreatedEvent>().toList();
 
       expect(
         newCreatedEvents.isEmpty,
         true,
-        reason: 'Second view should reuse existing queries (0 new queries created)',
+        reason:
+            'Second view should reuse existing queries (0 new queries created)',
       );
 
       // Verify they're using the same containers
       expect(
         sub1Rankings.queryContainer,
         same(sub2Rankings.queryContainer),
-        reason: 'Both views should share the same RankingsStreamQuery container',
+        reason:
+            'Both views should share the same RankingsStreamQuery container',
       );
 
       expect(

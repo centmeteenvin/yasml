@@ -2,7 +2,8 @@ part of '../events.dart';
 
 /// All events associated with [Command]
 sealed class CommandEvent extends Event {
-  CommandEvent({required this.commandType}) : super(componentName: 'Command - $commandType');
+  CommandEvent({required this.commandType})
+    : super(componentName: 'Command - $commandType');
 
   /// The type of the command that generated the event
   final Type commandType;
@@ -19,7 +20,10 @@ final class CommandExecutedEvent extends CommandEvent {
 final class CommandQueryInvalidationEvent extends CommandEvent {
   @internal
   ///
-  CommandQueryInvalidationEvent({required super.commandType, required this.queriesToInvalidate});
+  CommandQueryInvalidationEvent({
+    required super.commandType,
+    required this.queriesToInvalidate,
+  });
 
   /// The queries that are invalidated by the [Command.invalidate] method
   final Set<Query<dynamic>> queriesToInvalidate;

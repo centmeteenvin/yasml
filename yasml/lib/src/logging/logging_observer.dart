@@ -54,13 +54,19 @@ final class LoggingObserver implements Observer {
   void onQueryEvent(QueryEvent event) {
     switch (event) {
       case QueryContainerCreatedEvent(:final reason):
-        queryLog.finer('${baseLog(event)} Query Container created, reason: $reason');
+        queryLog.finer(
+          '${baseLog(event)} Query Container created, reason: $reason',
+        );
       case QueryContainerDisposedEvent(:final reason):
-        queryLog.finer('${baseLog(event)} Query Container disposed, reason: $reason');
+        queryLog.finer(
+          '${baseLog(event)} Query Container disposed, reason: $reason',
+        );
       case QueryContainerNewListenerEvent(:final queryListenableType):
         queryLog.fine('${baseLog(event)} New listener: $queryListenableType ');
       case QueryContainerListenerRemovedEvent(:final queryListenableType):
-        queryLog.fine('${baseLog(event)} Removed listener: $queryListenableType ');
+        queryLog.fine(
+          '${baseLog(event)} Removed listener: $queryListenableType ',
+        );
       case QueryExecutedEvent():
         queryLog.info('${baseLog(event)} Executed');
       case QuerySetStateEvent(:final newState):
@@ -76,13 +82,25 @@ final class LoggingObserver implements Observer {
   void onCompositionEvent(CompositionEvent event) {
     switch (event) {
       case CompositionContainerCreatedEvent(:final reason):
-        compositionLog.finer('${baseLog(event)} Query Container created, reason: $reason');
+        compositionLog.finer(
+          '${baseLog(event)} Query Container created, reason: $reason',
+        );
       case CompositionContainerDisposedEvent(:final reason):
-        compositionLog.finer('${baseLog(event)} Query Container created, reason: $reason');
-      case CompositionContainerNewListenerEvent(:final compositionListenableType):
-        compositionLog.fine('${baseLog(event)} New listener: $compositionListenableType ');
-      case CompositionContainerListenerRemovedEvent(:final compositionListenableType):
-        compositionLog.fine('${baseLog(event)} New listener: $compositionListenableType ');
+        compositionLog.finer(
+          '${baseLog(event)} Query Container created, reason: $reason',
+        );
+      case CompositionContainerNewListenerEvent(
+        :final compositionListenableType,
+      ):
+        compositionLog.fine(
+          '${baseLog(event)} New listener: $compositionListenableType ',
+        );
+      case CompositionContainerListenerRemovedEvent(
+        :final compositionListenableType,
+      ):
+        compositionLog.fine(
+          '${baseLog(event)} New listener: $compositionListenableType ',
+        );
       case CompositionExecutedEvent():
         compositionLog.info('${baseLog(event)} Executed');
       case CompositionSetStateEvent(:final newState):
@@ -130,7 +148,9 @@ final class LoggingObserver implements Observer {
       case MutationCommandDispatchedEvent(:final commandType):
         mutationLog.fine('${baseLog(event)} Dispatching command $commandType');
       case MutationQueryReadEvent(:final queryKey, :final queryState):
-        mutationLog.fine('${baseLog(event)} Read query $queryKey with state $queryState');
+        mutationLog.fine(
+          '${baseLog(event)} Read query $queryKey with state $queryState',
+        );
     }
   }
 

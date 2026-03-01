@@ -15,7 +15,10 @@ void main() {
       final (:world, :observer) = setupWorld();
 
       final listener = MockQueryListener();
-      final subscription = world.queryManager.subscribe(PlayerStatsQuery(), listener);
+      final subscription = world.queryManager.subscribe(
+        PlayerStatsQuery(),
+        listener,
+      );
 
       await world.settled;
 
@@ -29,17 +32,27 @@ void main() {
 
       // 1. QueryContainerCreatedEvent
       final createdEvent = validator.expectEvent<QueryContainerCreatedEvent>();
-      QueryEventValidators.validateContainerCreated(createdEvent,
-          key: 'PlayerStats', reason: 'New Listerner');
+      QueryEventValidators.validateContainerCreated(
+        createdEvent,
+        key: 'PlayerStats',
+        reason: 'New Listerner',
+      );
 
       // 2. QueryContainerNewListenerEvent
-      final newListenerEvent = validator.expectEvent<QueryContainerNewListenerEvent>();
-      QueryEventValidators.validateNewListener(newListenerEvent,
-          key: 'PlayerStats', listenerType: MockQueryListener);
+      final newListenerEvent =
+          validator.expectEvent<QueryContainerNewListenerEvent>();
+      QueryEventValidators.validateNewListener(
+        newListenerEvent,
+        key: 'PlayerStats',
+        listenerType: MockQueryListener,
+      );
 
       // 3. QueryExecutedEvent
       final executedEvent = validator.expectEvent<QueryExecutedEvent>();
-      QueryEventValidators.validateQueryExecuted(executedEvent, key: 'PlayerStats');
+      QueryEventValidators.validateQueryExecuted(
+        executedEvent,
+        key: 'PlayerStats',
+      );
 
       // 4. QuerySettledEvent (no SetStateEvent for sync queries on initial execution)
       final settledEvent = validator.expectEvent<QuerySettledEvent>();
@@ -49,14 +62,22 @@ void main() {
       world.queryManager.unsubscribe(subscription);
 
       // 5. QueryContainerListenerRemovedEvent
-      final listenerRemovedEvent = validator.skipToEvent<QueryContainerListenerRemovedEvent>();
-      QueryEventValidators.validateListenerRemoved(listenerRemovedEvent,
-          key: 'PlayerStats', listenerType: MockQueryListener);
+      final listenerRemovedEvent =
+          validator.skipToEvent<QueryContainerListenerRemovedEvent>();
+      QueryEventValidators.validateListenerRemoved(
+        listenerRemovedEvent,
+        key: 'PlayerStats',
+        listenerType: MockQueryListener,
+      );
 
       // 6. QueryContainerDisposedEvent
-      final disposedEvent = validator.skipToEvent<QueryContainerDisposedEvent>();
-      QueryEventValidators.validateContainerDisposed(disposedEvent,
-          key: 'PlayerStats', reason: 'No Listeners');
+      final disposedEvent =
+          validator.skipToEvent<QueryContainerDisposedEvent>();
+      QueryEventValidators.validateContainerDisposed(
+        disposedEvent,
+        key: 'PlayerStats',
+        reason: 'No Listeners',
+      );
 
       await world.destroy();
     });

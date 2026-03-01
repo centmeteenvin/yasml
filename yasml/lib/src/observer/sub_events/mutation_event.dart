@@ -3,7 +3,8 @@ part of '../events.dart';
 /// All events relating [Mutation]
 sealed class MutationEvent extends Event {
   ///
-  MutationEvent({required this.mutationType}) : super(componentName: 'Mutation - $mutationType');
+  MutationEvent({required this.mutationType})
+    : super(componentName: 'Mutation - $mutationType');
 
   /// The runtimeType of the [Mutation] related to the event
   final Type mutationType;
@@ -24,7 +25,10 @@ final class MutationExecutedEvent extends MutationEvent {
 /// After a [Mutation] Execution is finished and it is invalidating [Query]s
 final class MutationInvalidationEvent extends MutationEvent {
   ///
-  MutationInvalidationEvent({required super.mutationType, required this.queriesToInvalidate});
+  MutationInvalidationEvent({
+    required super.mutationType,
+    required this.queriesToInvalidate,
+  });
 
   /// The list of [Query] that is being invalidated
   final Set<Query<dynamic>> queriesToInvalidate;
@@ -33,7 +37,10 @@ final class MutationInvalidationEvent extends MutationEvent {
 /// When a [Mutation] execution dispatches a [Command] through the [Commander]
 final class MutationCommandDispatchedEvent extends MutationEvent {
   ///
-  MutationCommandDispatchedEvent({required super.mutationType, required this.commandType});
+  MutationCommandDispatchedEvent({
+    required super.mutationType,
+    required this.commandType,
+  });
 
   /// The runtimeType of the [Command] that is being dispatched
   final Type commandType;
@@ -42,7 +49,11 @@ final class MutationCommandDispatchedEvent extends MutationEvent {
 /// When a [Mutation] execution reads a [Query]
 final class MutationQueryReadEvent extends MutationEvent {
   ///
-  MutationQueryReadEvent({required super.mutationType, required this.queryKey, required this.queryState});
+  MutationQueryReadEvent({
+    required super.mutationType,
+    required this.queryKey,
+    required this.queryState,
+  });
 
   /// The [Query.key] that is being read
   final String queryKey;

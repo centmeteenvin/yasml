@@ -1,10 +1,11 @@
 {
-    "editor.codeActionsOnSave": {
-        "source.fixAll": "explicit",
-        "source.organizeImports": "explicit"
-    },
-    "dart.lineLength": 120,
-    "conventionalCommits.scopes": [
-        "yasml"
-    ],
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit",
+    "source.organizeImports": "explicit"
+  },
+  "dart.lineLength": 120,
+  "conventionalCommits.scopes": [
+    "yasml"
+  ],
+  "dart.flutterSdkPath": ".fvm/versions/3.38.5"
 }

@@ -1,0 +1,111 @@
+# Validates pub.dev publishing readiness on every PR that touches the package.
+# Runs four independent checks:
+#   1. `dart format` — enforces consistent code formatting
+#   2. `dart pub publish --dry-run` — catches packaging errors
+#   3. `pana` analysis — verifies pub.dev scoring
+#   4. Version guard — prevents manual version bumps (handled by release workflow)
+
+name: Pub Compliance
+
+on:
+  pull_request:
+    paths:
+      - 'yasml/**'
+      - '.github/workflows/pub-compliance.yaml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    name: Dart format
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: yasml
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Check formatting
+        run: dart format --set-exit-if-changed .
+
+  publish-dry-run:
+    name: Publish dry run
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: yasml
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Validate package for publishing
+        run: dart pub publish --dry-run
+
+  pana:
+    name: Package analysis (pana)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: yasml
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Install pana
+        run: dart pub global activate pana
+
+      # Threshold 20: allows up to 20 points lost out of the maximum.
+      # Absorbs minor issues like transient dependency staleness while
+      # still catching significant regressions in documentation,
+      # platform support, or static analysis.
+      - name: Run pana analysis
+        run: dart pub global run pana --exit-code-threshold 20 .
+
+  version-guard:
+    name: Version guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch base branch
+        run: git fetch origin ${{ github.base_ref }} --depth=1
+
+      - name: Check for unauthorized version bump
+        run: |
+          BASE_VERSION=$(git show origin/${{ github.base_ref }}:yasml/pubspec.yaml | grep '^version:' | sed 's/version: *//')
+          PR_VERSION=$(grep '^version:' yasml/pubspec.yaml | sed 's/version: *//')
+
+          echo "Base version: $BASE_VERSION"
+          echo "PR version:   $PR_VERSION"
+
+          if [ "$BASE_VERSION" != "$PR_VERSION" ]; then
+            echo ""
+            echo "::error file=yasml/pubspec.yaml::Version changed from ${BASE_VERSION} to ${PR_VERSION}. Version bumps are handled automatically by the release workflow. Please revert the version change in yasml/pubspec.yaml."
+            exit 1
+          fi
+
+          echo "Version unchanged. OK."

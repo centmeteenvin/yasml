@@ -16,7 +16,10 @@ void main() {
       final (:world, :observer) = setupWorld();
 
       final listener = MockQueryListener();
-      final subscription = world.queryManager.subscribe(AchievementsQuery(), listener);
+      final subscription = world.queryManager.subscribe(
+        AchievementsQuery(),
+        listener,
+      );
 
       await world.settled;
 
@@ -32,26 +35,43 @@ void main() {
 
       // 1. QueryContainerCreatedEvent
       final createdEvent = validator.expectEvent<QueryContainerCreatedEvent>();
-      QueryEventValidators.validateContainerCreated(createdEvent, key: 'Achievements', reason: 'New Listerner');
+      QueryEventValidators.validateContainerCreated(
+        createdEvent,
+        key: 'Achievements',
+        reason: 'New Listerner',
+      );
 
       // 2. QueryContainerNewListenerEvent
-      final newListenerEvent = validator.expectEvent<QueryContainerNewListenerEvent>();
-      QueryEventValidators.validateNewListener(newListenerEvent, key: 'Achievements', listenerType: MockQueryListener);
+      final newListenerEvent =
+          validator.expectEvent<QueryContainerNewListenerEvent>();
+      QueryEventValidators.validateNewListener(
+        newListenerEvent,
+        key: 'Achievements',
+        listenerType: MockQueryListener,
+      );
 
       // 3. QueryExecutedEvent
       final executedEvent = validator.expectEvent<QueryExecutedEvent>();
-      QueryEventValidators.validateQueryExecuted(executedEvent, key: 'Achievements');
+      QueryEventValidators.validateQueryExecuted(
+        executedEvent,
+        key: 'Achievements',
+      );
 
       // 4. QuerySetStateEvent (should be AsyncData with achievements)
       final setStateEvent = validator.expectEvent<QuerySetStateEvent>();
       QueryEventValidators.validateSetState(
         setStateEvent,
         key: 'Achievements',
-        stateValidator: (state) => AsyncValueValidators.isAsyncDataWith<List<Achievement>>(
-          state,
-          (data) => data.length == 4 && data.first.title == 'First Blood' && data.where((a) => a.unlocked).length == 2,
-        ),
-        reason: 'Achievements should be AsyncData with correct data and 2 unlocked',
+        stateValidator:
+            (state) => AsyncValueValidators.isAsyncDataWith<List<Achievement>>(
+              state,
+              (data) =>
+                  data.length == 4 &&
+                  data.first.title == 'First Blood' &&
+                  data.where((a) => a.unlocked).length == 2,
+            ),
+        reason:
+            'Achievements should be AsyncData with correct data and 2 unlocked',
       );
 
       // 5. QuerySettledEvent
@@ -62,7 +82,8 @@ void main() {
       world.queryManager.unsubscribe(subscription);
 
       // 6. QueryContainerListenerRemovedEvent
-      final listenerRemovedEvent = validator.skipToEvent<QueryContainerListenerRemovedEvent>();
+      final listenerRemovedEvent =
+          validator.skipToEvent<QueryContainerListenerRemovedEvent>();
       QueryEventValidators.validateListenerRemoved(
         listenerRemovedEvent,
         key: 'Achievements',
@@ -70,8 +91,13 @@ void main() {
       );
 
       // 7. QueryContainerDisposedEvent
-      final disposedEvent = validator.skipToEvent<QueryContainerDisposedEvent>();
-      QueryEventValidators.validateContainerDisposed(disposedEvent, key: 'Achievements', reason: 'No Listeners');
+      final disposedEvent =
+          validator.skipToEvent<QueryContainerDisposedEvent>();
+      QueryEventValidators.validateContainerDisposed(
+        disposedEvent,
+        key: 'Achievements',
+        reason: 'No Listeners',
+      );
 
       await world.destroy();
     });

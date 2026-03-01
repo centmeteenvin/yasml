@@ -31,7 +31,8 @@ abstract interface class Commander {
 /// The runtime of a [Mutation]. Handles the lifecycle of running a mutation by handling the
 /// dispatching of commands while collecting their queries they would invalidate. Then after the user code
 /// the queries will be invalidated and await the settling of the world.
-final class MutationContainer<M extends Mutation> implements Commander, QueryReachable {
+final class MutationContainer<M extends Mutation>
+    implements Commander, QueryReachable {
   ///
   MutationContainer({required this.world, required this.mutationConstructor});
 
@@ -48,7 +49,12 @@ final class MutationContainer<M extends Mutation> implements Commander, QueryRea
   @override
   Future<K> dispatch<K>(Command<K> command) async {
     world
-      ..emit(MutationCommandDispatchedEvent(mutationType: M, commandType: command.runtimeType))
+      ..emit(
+        MutationCommandDispatchedEvent(
+          mutationType: M,
+          commandType: command.runtimeType,
+        ),
+      )
       ..emit(CommandExecutedEvent(commandType: command.runtimeType));
     final result = await command.execute(world);
 
@@ -56,7 +62,10 @@ final class MutationContainer<M extends Mutation> implements Commander, QueryRea
     queriesToInvalidate.addAll(invalidQueries);
 
     world.emit(
-      CommandQueryInvalidationEvent(commandType: command.runtimeType, queriesToInvalidate: queriesToInvalidate),
+      CommandQueryInvalidationEvent(
+        commandType: command.runtimeType,
+        queriesToInvalidate: queriesToInvalidate,
+      ),
     );
     return result;
   }
@@ -69,7 +78,13 @@ final class MutationContainer<M extends Mutation> implements Commander, QueryRea
     final value = subscription.queryContainer.state;
     world.queryManager.unsubscribe(subscription);
 
-    world.emit(MutationQueryReadEvent(mutationType: M, queryKey: query.key, queryState: value));
+    world.emit(
+      MutationQueryReadEvent(
+        mutationType: M,
+        queryKey: query.key,
+        queryState: value,
+      ),
+    );
     return value;
   }
 
@@ -85,7 +100,12 @@ final class MutationContainer<M extends Mutation> implements Commander, QueryRea
     world.emit(MutationExecutedEvent(mutationType: M));
     final mutationResult = await mutationFn.call(mutation);
 
-    world.emit(MutationInvalidationEvent(mutationType: M, queriesToInvalidate: queriesToInvalidate));
+    world.emit(
+      MutationInvalidationEvent(
+        mutationType: M,
+        queriesToInvalidate: queriesToInvalidate,
+      ),
+    );
     world.queryManager.invalidate(queriesToInvalidate);
 
     await world.settled;

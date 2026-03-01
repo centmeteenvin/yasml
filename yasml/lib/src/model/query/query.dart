@@ -23,7 +23,12 @@ abstract base class Query<T> implements RegisitryKey<String> {
 
   /// A method that executes the query. It is called when the query container
   /// is executed and when the query is invalidated.
-  CleanupFn fetch(World world, Option<T> currentState, ValueChanged<T> setState, VoidCallback settled);
+  CleanupFn fetch(
+    World world,
+    Option<T> currentState,
+    ValueChanged<T> setState,
+    VoidCallback settled,
+  );
 
   @nonVirtual
   @override

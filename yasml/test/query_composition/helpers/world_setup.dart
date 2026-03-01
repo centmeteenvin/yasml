@@ -14,9 +14,18 @@ import 'test_observer.dart';
   final world = World.create(plugins: [], observers: [observer]);
 
   // Validate world creation
-  expect(observer.events.isNotEmpty, true, reason: 'World creation should emit events');
-  final worldCreatedEvents = observer.events.whereType<WorldCreatedEvent>().toList();
-  expect(worldCreatedEvents.isNotEmpty, true, reason: 'World creation should emit WorldCreatedEvent');
+  expect(
+    observer.events.isNotEmpty,
+    true,
+    reason: 'World creation should emit events',
+  );
+  final worldCreatedEvents =
+      observer.events.whereType<WorldCreatedEvent>().toList();
+  expect(
+    worldCreatedEvents.isNotEmpty,
+    true,
+    reason: 'World creation should emit WorldCreatedEvent',
+  );
 
   // Clear events for test to focus on query-specific events
   observer.events.clear();

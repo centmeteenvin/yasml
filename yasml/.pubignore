@@ -1,0 +1,18 @@
+# Build artifacts
+build/
+.dart_tool/
+doc/
+
+# IDE and editor files
+.idea/
+*.iml
+.vscode/
+
+# FVM
+.fvm/
+
+# OS files
+.DS_Store
+
+# Test and CI artifacts
+coverage/

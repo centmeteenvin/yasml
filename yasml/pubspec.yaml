@@ -1,8 +1,10 @@
 name: yasml
-description: "A new Flutter package project."
+description: "Yet Another State Management Library — explicit, traceable, compiler-verified state management for Flutter."
 version: 0.2.0
 resolution: workspace
-homepage:
+homepage: https://github.com/centmeteenvin/yasml
+repository: https://github.com/centmeteenvin/yasml
+issue_tracker: https://github.com/centmeteenvin/yasml/issues
 
 environment:
   sdk: ^3.7.0

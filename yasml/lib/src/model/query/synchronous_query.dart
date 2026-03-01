@@ -12,15 +12,22 @@ abstract base class SynchronousQuery<T> extends Query<T> {
   /// An easier way to create a SynchronousQuery from a simple function.
   ///  It takes a function that receives the world and returns the query result,
   /// and a key for the query.
-  const factory SynchronousQuery.create(T Function(World world) queryFn, {required String key}) =
-      SynchronousQueryFunction;
+  const factory SynchronousQuery.create(
+    T Function(World world) queryFn, {
+    required String key,
+  }) = SynchronousQueryFunction;
   @override
   T initialState(World world) {
     return query(world);
   }
 
   @override
-  CleanupFn fetch(World world, Option<T> currentState, ValueChanged<T> setState, VoidCallback settled) {
+  CleanupFn fetch(
+    World world,
+    Option<T> currentState,
+    ValueChanged<T> setState,
+    VoidCallback settled,
+  ) {
     if (currentState case OptionValue(:final value)) {
       setState(value);
     }

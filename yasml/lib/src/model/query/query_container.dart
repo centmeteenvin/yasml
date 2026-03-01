@@ -133,7 +133,9 @@ final class QueryContainer<T> {
   ///  to the world.
   Future<void> dispose() async {
     if (listeners.isNotEmpty) {
-      throw StateError('Cannot Dispose a query container that still has listeners');
+      throw StateError(
+        'Cannot Dispose a query container that still has listeners',
+      );
     }
 
     isSettled = true;
@@ -157,7 +159,10 @@ final class QueryContainer<T> {
 @immutable
 final class QuerySubscription<T> {
   /// @nodoc
-  const QuerySubscription({required this.listeningContainer, required this.queryContainer});
+  const QuerySubscription({
+    required this.listeningContainer,
+    required this.queryContainer,
+  });
 
   /// The container that is listening to the query container. It is used to notify the container when the state of the query changes.s
   final QueryReachable listeningContainer;

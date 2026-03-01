@@ -18,7 +18,11 @@ class EventSequenceValidator {
 
   /// Validates the next event is of type T
   T expectEvent<T extends Event>() {
-    expect(_currentIndex < events.length, true, reason: 'Expected event of type $T but no more events available');
+    expect(
+      _currentIndex < events.length,
+      true,
+      reason: 'Expected event of type $T but no more events available',
+    );
     final event = events[_currentIndex];
     expect(event, isA<T>(), reason: 'Expected $T but got ${event.runtimeType}');
     _currentIndex++;
@@ -26,9 +30,16 @@ class EventSequenceValidator {
   }
 
   /// Validates the next event of type T matches the predicate
-  T expectEventWhere<T extends Event>(bool Function(T) predicate, [String? reason]) {
+  T expectEventWhere<T extends Event>(
+    bool Function(T) predicate, [
+    String? reason,
+  ]) {
     final event = expectEvent<T>();
-    expect(predicate(event), true, reason: reason ?? 'Event predicate failed for $event');
+    expect(
+      predicate(event),
+      true,
+      reason: reason ?? 'Event predicate failed for $event',
+    );
     return event;
   }
 
@@ -50,7 +61,8 @@ class EventSequenceValidator {
     expect(
       _currentIndex,
       events.length,
-      reason: 'Expected no more events but found ${remaining.length} remaining: $remaining',
+      reason:
+          'Expected no more events but found ${remaining.length} remaining: $remaining',
     );
   }
 
@@ -73,8 +85,16 @@ class QueryEventValidators {
     required String key,
     required String reason,
   }) {
-    expect(event.queryKey, key, reason: 'QueryContainerCreatedEvent key mismatch');
-    expect(event.reason, reason, reason: 'QueryContainerCreatedEvent reason mismatch');
+    expect(
+      event.queryKey,
+      key,
+      reason: 'QueryContainerCreatedEvent key mismatch',
+    );
+    expect(
+      event.reason,
+      reason,
+      reason: 'QueryContainerCreatedEvent reason mismatch',
+    );
   }
 
   /// Validates QueryContainerNewListenerEvent properties
@@ -83,12 +103,23 @@ class QueryEventValidators {
     required String key,
     required Type listenerType,
   }) {
-    expect(event.queryKey, key, reason: 'QueryContainerNewListenerEvent key mismatch');
-    expect(event.queryListenableType, listenerType, reason: 'QueryContainerNewListenerEvent listener type mismatch');
+    expect(
+      event.queryKey,
+      key,
+      reason: 'QueryContainerNewListenerEvent key mismatch',
+    );
+    expect(
+      event.queryListenableType,
+      listenerType,
+      reason: 'QueryContainerNewListenerEvent listener type mismatch',
+    );
   }
 
   /// Validates QueryExecutedEvent properties
-  static void validateQueryExecuted(QueryExecutedEvent event, {required String key}) {
+  static void validateQueryExecuted(
+    QueryExecutedEvent event, {
+    required String key,
+  }) {
     expect(event.queryKey, key, reason: 'QueryExecutedEvent key mismatch');
   }
 
@@ -100,7 +131,11 @@ class QueryEventValidators {
     String? reason,
   }) {
     expect(event.queryKey, key, reason: 'QuerySetStateEvent key mismatch');
-    expect(stateValidator(event.newState), true, reason: reason ?? 'QuerySetStateEvent state validation failed');
+    expect(
+      stateValidator(event.newState),
+      true,
+      reason: reason ?? 'QuerySetStateEvent state validation failed',
+    );
   }
 
   /// Validates QuerySettledEvent properties
@@ -114,7 +149,11 @@ class QueryEventValidators {
     required String key,
     required Type listenerType,
   }) {
-    expect(event.queryKey, key, reason: 'QueryContainerListenerRemovedEvent key mismatch');
+    expect(
+      event.queryKey,
+      key,
+      reason: 'QueryContainerListenerRemovedEvent key mismatch',
+    );
     expect(
       event.queryListenableType,
       listenerType,
@@ -128,8 +167,16 @@ class QueryEventValidators {
     required String key,
     required String reason,
   }) {
-    expect(event.queryKey, key, reason: 'QueryContainerDisposedEvent key mismatch');
-    expect(event.reason, reason, reason: 'QueryContainerDisposedEvent reason mismatch');
+    expect(
+      event.queryKey,
+      key,
+      reason: 'QueryContainerDisposedEvent key mismatch',
+    );
+    expect(
+      event.reason,
+      reason,
+      reason: 'QueryContainerDisposedEvent reason mismatch',
+    );
   }
 }
 

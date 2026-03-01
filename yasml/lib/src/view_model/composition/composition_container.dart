@@ -45,7 +45,12 @@ final class CompositionContainer<T> implements AsyncComposer, QueryReachable {
   ///
   /// Emits a [CompositionSetStateEvent]
   void setState(T newState) {
-    world.emit(CompositionSetStateEvent(compositionKey: composition.key, newState: newState));
+    world.emit(
+      CompositionSetStateEvent(
+        compositionKey: composition.key,
+        newState: newState,
+      ),
+    );
     _state = OptionValue(newState);
     for (final listener in listeners) {
       listener.widget.updateState(newState);
@@ -98,8 +103,14 @@ final class CompositionContainer<T> implements AsyncComposer, QueryReachable {
     await container.settled;
 
     return switch (container.state) {
-      AsyncLoading() => throw StateError('Aysnchronous query ${container.query.key} still in loading after settling'),
-      AsyncError(:final error, :final stackTrace) => Error.throwWithStackTrace(error, stackTrace ?? StackTrace.current),
+      AsyncLoading() =>
+        throw StateError(
+          'Aysnchronous query ${container.query.key} still in loading after settling',
+        ),
+      AsyncError(:final error, :final stackTrace) => Error.throwWithStackTrace(
+        error,
+        stackTrace ?? StackTrace.current,
+      ),
       AsyncData(:final data) => data,
     };
   }
@@ -123,8 +134,14 @@ final class CompositionContainer<T> implements AsyncComposer, QueryReachable {
     await container.settled;
 
     return switch (container.state) {
-      AsyncLoading() => throw StateError('Aysnchronous query ${container.query.key} after settling'),
-      AsyncError(:final error, :final stackTrace) => Error.throwWithStackTrace(error, stackTrace ?? StackTrace.current),
+      AsyncLoading() =>
+        throw StateError(
+          'Aysnchronous query ${container.query.key} after settling',
+        ),
+      AsyncError(:final error, :final stackTrace) => Error.throwWithStackTrace(
+        error,
+        stackTrace ?? StackTrace.current,
+      ),
       AsyncData(:final data) => data,
     };
   }
@@ -212,8 +229,14 @@ final class CompositionContainer<T> implements AsyncComposer, QueryReachable {
   ///
   /// Returns a Future that resolves when the [CompositionContainer.world] is settled.
   Future<void> refresh() {
-    final subscribedQueries = querySubscriptions.map((sub) => sub.queryContainer.query).toSet();
-    world.emit(CompositionRefreshEvent(compositionKey: composition.key, queriesToInvalidate: subscribedQueries));
+    final subscribedQueries =
+        querySubscriptions.map((sub) => sub.queryContainer.query).toSet();
+    world.emit(
+      CompositionRefreshEvent(
+        compositionKey: composition.key,
+        queriesToInvalidate: subscribedQueries,
+      ),
+    );
 
     world.queryManager.invalidate(subscribedQueries);
     return world.settled;
@@ -224,7 +247,8 @@ final class CompositionContainer<T> implements AsyncComposer, QueryReachable {
 
   @override
   bool operator ==(Object other) {
-    return other is CompositionContainer && other.composition.key == composition.key;
+    return other is CompositionContainer &&
+        other.composition.key == composition.key;
   }
 }
 
@@ -232,7 +256,10 @@ final class CompositionContainer<T> implements AsyncComposer, QueryReachable {
 @immutable
 final class CompositionSubscription<T> {
   ///
-  const CompositionSubscription({required this.compositionContainer, required this.widget});
+  const CompositionSubscription({
+    required this.compositionContainer,
+    required this.widget,
+  });
 
   /// the [CompositionContainer] that is being subscribed to
   final CompositionContainer<T> compositionContainer;

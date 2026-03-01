@@ -3,7 +3,8 @@ part of '../events.dart';
 /// Events associated with [Composition] lifecycle
 sealed class CompositionEvent extends Event {
   ///
-  CompositionEvent({required this.compositionKey}) : super(componentName: 'Composition - $compositionKey');
+  CompositionEvent({required this.compositionKey})
+    : super(componentName: 'Composition - $compositionKey');
 
   /// The [Composition.key] that identifies the composition.
   final String compositionKey;
@@ -12,7 +13,10 @@ sealed class CompositionEvent extends Event {
 /// When a new [CompositionContainer] is created due to a subscription to it.
 final class CompositionContainerCreatedEvent extends CompositionEvent {
   ///
-  CompositionContainerCreatedEvent({required super.compositionKey, required this.reason});
+  CompositionContainerCreatedEvent({
+    required super.compositionKey,
+    required this.reason,
+  });
 
   /// The reason the container was created
   final String reason;
@@ -21,7 +25,10 @@ final class CompositionContainerCreatedEvent extends CompositionEvent {
 /// When an existing [CompositionContainer] is disposed.
 final class CompositionContainerDisposedEvent extends CompositionEvent {
   ///
-  CompositionContainerDisposedEvent({required super.compositionKey, required this.reason});
+  CompositionContainerDisposedEvent({
+    required super.compositionKey,
+    required this.reason,
+  });
 
   /// The reason the container was disposed.
   final String reason;
@@ -30,7 +37,10 @@ final class CompositionContainerDisposedEvent extends CompositionEvent {
 /// When a [CompositionContainer] get a new listener
 final class CompositionContainerNewListenerEvent extends CompositionEvent {
   ///
-  CompositionContainerNewListenerEvent({required super.compositionKey, required this.compositionListenableType});
+  CompositionContainerNewListenerEvent({
+    required super.compositionKey,
+    required this.compositionListenableType,
+  });
 
   /// The runtimeType of the new listener.
   final Type compositionListenableType;
@@ -39,7 +49,10 @@ final class CompositionContainerNewListenerEvent extends CompositionEvent {
 /// When a listener is removed form a [CompositionContainer].
 final class CompositionContainerListenerRemovedEvent extends CompositionEvent {
   ///
-  CompositionContainerListenerRemovedEvent({required super.compositionKey, required this.compositionListenableType});
+  CompositionContainerListenerRemovedEvent({
+    required super.compositionKey,
+    required this.compositionListenableType,
+  });
 
   /// The runtimeType of the listener that was removed.
   final Type compositionListenableType;
@@ -54,7 +67,10 @@ final class CompositionExecutedEvent extends CompositionEvent {
 /// When the [Composition.execute] method calls [CompositionContainer.setState]
 final class CompositionSetStateEvent extends CompositionEvent {
   ///
-  CompositionSetStateEvent({required super.compositionKey, required this.newState});
+  CompositionSetStateEvent({
+    required super.compositionKey,
+    required this.newState,
+  });
 
   /// The value of the state that was set.
   final dynamic newState;
@@ -69,7 +85,11 @@ final class CompositionSettledEvent extends CompositionEvent {
 /// When the [Composition.execute] method calls [Composer.watch] to watch a [Query]
 final class CompositionWatchEvent extends CompositionEvent {
   ///
-  CompositionWatchEvent({required super.compositionKey, required this.watchingQueryKey, required this.isAsync});
+  CompositionWatchEvent({
+    required super.compositionKey,
+    required this.watchingQueryKey,
+    required this.isAsync,
+  });
 
   /// The key of the query that is being watched.
   final String watchingQueryKey;
@@ -82,7 +102,10 @@ final class CompositionWatchEvent extends CompositionEvent {
 /// when the [CompositionManager.unsubscribe] method is called
 final class CompositionUnsubscribeEvent extends CompositionEvent {
   ///
-  CompositionUnsubscribeEvent({required super.compositionKey, required this.queryKey});
+  CompositionUnsubscribeEvent({
+    required super.compositionKey,
+    required this.queryKey,
+  });
 
   /// The [Query.key] that is unsubscribing.
   final String queryKey;
@@ -91,7 +114,10 @@ final class CompositionUnsubscribeEvent extends CompositionEvent {
 /// when the [Notifier] refresh method is called.
 final class CompositionRefreshEvent extends CompositionEvent {
   ///
-  CompositionRefreshEvent({required super.compositionKey, required this.queriesToInvalidate});
+  CompositionRefreshEvent({
+    required super.compositionKey,
+    required this.queriesToInvalidate,
+  });
 
   /// The [Query] that the composition was subscribed to that are now being invalidated.
   final Set<Query<dynamic>> queriesToInvalidate;

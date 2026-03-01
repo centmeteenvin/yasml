@@ -16,8 +16,10 @@ abstract base class FutureQuery<T> extends Query<AsyncValue<T>> {
   /// An easier way to create a FutureQuery from a simple function.
   ///  It takes a function that receives the world and returns a Future with the query result,
   /// and a key for the query.
-  const factory FutureQuery.create(Future<T> Function(World world) queryFn, {required String key}) =
-      FutureQueryFunction;
+  const factory FutureQuery.create(
+    Future<T> Function(World world) queryFn, {
+    required String key,
+  }) = FutureQueryFunction;
 
   @override
   AsyncValue<T> initialState(World world) => AsyncLoading();
@@ -38,7 +40,12 @@ abstract base class FutureQuery<T> extends Query<AsyncValue<T>> {
             setState(AsyncData(value));
           })
           .onError((error, stackTrace) {
-            setState(AsyncError(error as Exception? ?? Exception('Unknown error'), stackTrace: stackTrace));
+            setState(
+              AsyncError(
+                error as Exception? ?? Exception('Unknown error'),
+                stackTrace: stackTrace,
+              ),
+            );
           })
           .whenComplete(() {
             settled();

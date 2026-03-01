@@ -19,7 +19,11 @@ abstract base class SynchronousComposition<T> extends Composition<T> {
   }) = SynchronousCompositionFunction;
   @nonVirtual
   @override
-  void execute(Composer composer, ValueChanged<T> setState, VoidCallback setSettled) {
+  void execute(
+    Composer composer,
+    ValueChanged<T> setState,
+    VoidCallback setSettled,
+  ) {
     // here we do re-execute the compose function because it should be cheap
     // in the synchronous query we ommit it because we know the initial value is already the correct one
     final value = compose(composer);
@@ -44,7 +48,8 @@ abstract base class SynchronousComposition<T> extends Composition<T> {
 
 /// A simple implementation of a SynchronousComposition that takes a function and a key
 /// and executes the function to get the composition result.
-final class SynchronousCompositionFunction<T> extends SynchronousComposition<T> {
+final class SynchronousCompositionFunction<T>
+    extends SynchronousComposition<T> {
   /// @nodoc
   const SynchronousCompositionFunction(this.composeFn, {required this.key});
 

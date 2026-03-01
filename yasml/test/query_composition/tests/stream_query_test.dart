@@ -16,7 +16,10 @@ void main() {
       final (:world, :observer) = setupWorld();
 
       final listener = MockQueryListener();
-      final subscription = world.queryManager.subscribe(RankingsStreamQuery(), listener);
+      final subscription = world.queryManager.subscribe(
+        RankingsStreamQuery(),
+        listener,
+      );
 
       await world.settled;
 
@@ -32,15 +35,27 @@ void main() {
 
       // 1. QueryContainerCreatedEvent
       final createdEvent = validator.expectEvent<QueryContainerCreatedEvent>();
-      QueryEventValidators.validateContainerCreated(createdEvent, key: 'Rankings', reason: 'New Listerner');
+      QueryEventValidators.validateContainerCreated(
+        createdEvent,
+        key: 'Rankings',
+        reason: 'New Listerner',
+      );
 
       // 2. QueryContainerNewListenerEvent
-      final newListenerEvent = validator.expectEvent<QueryContainerNewListenerEvent>();
-      QueryEventValidators.validateNewListener(newListenerEvent, key: 'Rankings', listenerType: MockQueryListener);
+      final newListenerEvent =
+          validator.expectEvent<QueryContainerNewListenerEvent>();
+      QueryEventValidators.validateNewListener(
+        newListenerEvent,
+        key: 'Rankings',
+        listenerType: MockQueryListener,
+      );
 
       // 3. QueryExecutedEvent
       final executedEvent = validator.expectEvent<QueryExecutedEvent>();
-      QueryEventValidators.validateQueryExecuted(executedEvent, key: 'Rankings');
+      QueryEventValidators.validateQueryExecuted(
+        executedEvent,
+        key: 'Rankings',
+      );
 
       // 4. QuerySettledEvent (called from setSettled in async* generator)
       final settledEvent = validator.skipToEvent<QuerySettledEvent>();
@@ -51,10 +66,11 @@ void main() {
       QueryEventValidators.validateSetState(
         setStateEvent,
         key: 'Rankings',
-        stateValidator: (state) => AsyncValueValidators.isAsyncDataWith<List<RankEntry>>(
-          state,
-          (data) => data.length == 3 && data.first.playerName == 'Alice',
-        ),
+        stateValidator:
+            (state) => AsyncValueValidators.isAsyncDataWith<List<RankEntry>>(
+              state,
+              (data) => data.length == 3 && data.first.playerName == 'Alice',
+            ),
         reason: 'Rankings should be AsyncData with correct data',
       );
 
@@ -62,7 +78,8 @@ void main() {
       world.queryManager.unsubscribe(subscription);
 
       // 6. QueryContainerListenerRemovedEvent
-      final listenerRemovedEvent = validator.skipToEvent<QueryContainerListenerRemovedEvent>();
+      final listenerRemovedEvent =
+          validator.skipToEvent<QueryContainerListenerRemovedEvent>();
       QueryEventValidators.validateListenerRemoved(
         listenerRemovedEvent,
         key: 'Rankings',
@@ -70,8 +87,13 @@ void main() {
       );
 
       // 7. QueryContainerDisposedEvent
-      final disposedEvent = validator.skipToEvent<QueryContainerDisposedEvent>();
-      QueryEventValidators.validateContainerDisposed(disposedEvent, key: 'Rankings', reason: 'No Listeners');
+      final disposedEvent =
+          validator.skipToEvent<QueryContainerDisposedEvent>();
+      QueryEventValidators.validateContainerDisposed(
+        disposedEvent,
+        key: 'Rankings',
+        reason: 'No Listeners',
+      );
 
       await world.destroy();
     });

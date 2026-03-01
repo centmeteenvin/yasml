@@ -18,7 +18,10 @@ abstract interface class CompositionManager {
 
   /// Subscribe a [ViewWidget] to a certain [Composition] and returns the Compositions
   /// initial state.
-  CompositionSubscription<T> subscribe<T>(Composition<T> composition, ViewWidgetState<T, Composition<T>, void> widget);
+  CompositionSubscription<T> subscribe<T>(
+    Composition<T> composition,
+    ViewWidgetState<T, Composition<T>, void> widget,
+  );
 
   /// Unsubscribes a [ViewWidget] from a [Composition].
   /// If the [Composition] has no listeners afterwards it will be disposed.
@@ -42,7 +45,8 @@ final class CompositionManagerImpl implements CompositionManager {
   final WorldImpl world;
 
   /// A Registry that contains a dictionary of [Composition] : [CompositionContainer].
-  final Registry<String, Composition<dynamic>, CompositionContainer<dynamic>> registry = Registry();
+  final Registry<String, Composition<dynamic>, CompositionContainer<dynamic>>
+  registry = Registry();
 
   /// Contains the previous value of [CompositionManager.allSettled]
   ///
@@ -50,12 +54,15 @@ final class CompositionManagerImpl implements CompositionManager {
   Option<bool> previousSettledState = OptionEmpty();
 
   @override
-  bool get allSettled => registry.items.every((container) => container.isSettled);
+  bool get allSettled =>
+      registry.items.every((container) => container.isSettled);
 
   @override
   void notifySettledChange() {
     // nothing changed here
-    if (previousSettledState case OptionValue(:final value) when value == allSettled) {
+    if (previousSettledState case OptionValue(
+      :final value,
+    ) when value == allSettled) {
       return;
     }
     previousSettledState = OptionValue(allSettled);
@@ -69,12 +76,22 @@ final class CompositionManagerImpl implements CompositionManager {
   /// Emits [CompositionContainerCreatedEvent].
   CompositionContainer<T> get<T>(Composition<T> composition) {
     final option = registry.get(composition);
-    if (option case OptionValue(value: final CompositionContainer<T> container)) {
+    if (option case OptionValue(
+      value: final CompositionContainer<T> container,
+    )) {
       return container;
     }
 
-    world.emit(CompositionContainerCreatedEvent(compositionKey: composition.key, reason: 'new Listener'));
-    final container = CompositionContainer(composition: composition, world: world);
+    world.emit(
+      CompositionContainerCreatedEvent(
+        compositionKey: composition.key,
+        reason: 'new Listener',
+      ),
+    );
+    final container = CompositionContainer(
+      composition: composition,
+      world: world,
+    );
     registry.register(composition, container);
     return container;
   }
@@ -86,9 +103,15 @@ final class CompositionManagerImpl implements CompositionManager {
   }
 
   @override
-  CompositionSubscription<T> subscribe<T>(Composition<T> composition, ViewWidgetState<T, Composition<T>, void> widget) {
+  CompositionSubscription<T> subscribe<T>(
+    Composition<T> composition,
+    ViewWidgetState<T, Composition<T>, void> widget,
+  ) {
     final container = get(composition);
-    final subscription = CompositionSubscription(compositionContainer: container, widget: widget);
+    final subscription = CompositionSubscription(
+      compositionContainer: container,
+      widget: widget,
+    );
 
     container.addListener(subscription);
 
@@ -97,12 +120,18 @@ final class CompositionManagerImpl implements CompositionManager {
 
   @override
   void unsubscribe(CompositionSubscription<dynamic> subscription) {
-    final container = subscription.compositionContainer..removeListener(subscription);
+    final container =
+        subscription.compositionContainer..removeListener(subscription);
 
     if (container.listeners.isEmpty) {
       registry.unregister(container.composition);
 
-      world.emit(CompositionContainerDisposedEvent(compositionKey: container.composition.key, reason: 'No Listeners'));
+      world.emit(
+        CompositionContainerDisposedEvent(
+          compositionKey: container.composition.key,
+          reason: 'No Listeners',
+        ),
+      );
       container.dispose();
       remove(container.composition);
     }
@@ -117,7 +146,10 @@ final class CompositionManagerImpl implements CompositionManager {
   @override
   Future<void> destroy() async {
     registry.items
-        .expand((container) => container.listeners.cast<CompositionSubscription<dynamic>>())
+        .expand(
+          (container) =>
+              container.listeners.cast<CompositionSubscription<dynamic>>(),
+        )
         .toList()
         .forEach(unsubscribe);
   }

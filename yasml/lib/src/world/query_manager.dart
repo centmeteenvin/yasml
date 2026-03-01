@@ -19,7 +19,10 @@ abstract interface class QueryManager {
 
   /// Subscribes a [QueryReachable] to a certain [Query] and returns
   /// with the query's initialState
-  QuerySubscription<T> subscribe<T>(Query<T> query, QueryReachable listeningContainer);
+  QuerySubscription<T> subscribe<T>(
+    Query<T> query,
+    QueryReachable listeningContainer,
+  );
 
   /// Unsubscribes a [QueryReachable] from a certain [Query]. If the query
   /// has no more listeners after unsubscribing, the query will be disposed.
@@ -42,7 +45,8 @@ final class QueryManagerImpl implements QueryManager {
   final WorldImpl world;
 
   /// A Registry that contains a dictionary of [Query] : [QueryContainer].
-  final Registry<String, Query<dynamic>, QueryContainer<dynamic>> registry = Registry();
+  final Registry<String, Query<dynamic>, QueryContainer<dynamic>> registry =
+      Registry();
 
   /// Contains the previous value of [QueryManager.allSettled]
   ///
@@ -50,14 +54,17 @@ final class QueryManagerImpl implements QueryManager {
   Option<bool> previousSettledState = OptionEmpty();
 
   @override
-  bool get allSettled => registry.items.every((container) => container.isSettled);
+  bool get allSettled =>
+      registry.items.every((container) => container.isSettled);
 
   /// Called by the queryContainer any time the query is settled
   /// If the settled state of the query manager changed the world will be notified.
   @override
   void notifySettledChange() {
     // The entire settled state is still the same
-    if (previousSettledState case OptionValue(:final value) when value == allSettled) {
+    if (previousSettledState case OptionValue(
+      :final value,
+    ) when value == allSettled) {
       return;
     }
     previousSettledState = OptionValue(allSettled);
@@ -71,7 +78,9 @@ final class QueryManagerImpl implements QueryManager {
       return value;
     }
 
-    world.emit(QueryContainerCreatedEvent(queryKey: query.key, reason: 'New Listerner'));
+    world.emit(
+      QueryContainerCreatedEvent(queryKey: query.key, reason: 'New Listerner'),
+    );
     final container = QueryContainer(world: world, query: query);
     registry.register(query, container);
     return container;
@@ -83,9 +92,15 @@ final class QueryManagerImpl implements QueryManager {
   }
 
   @override
-  QuerySubscription<T> subscribe<T>(Query<T> query, QueryReachable listeningContainer) {
+  QuerySubscription<T> subscribe<T>(
+    Query<T> query,
+    QueryReachable listeningContainer,
+  ) {
     final queryContainer = get(query);
-    final subscription = QuerySubscription(listeningContainer: listeningContainer, queryContainer: queryContainer);
+    final subscription = QuerySubscription(
+      listeningContainer: listeningContainer,
+      queryContainer: queryContainer,
+    );
     queryContainer.addListener(subscription);
     return subscription;
   }
@@ -96,7 +111,12 @@ final class QueryManagerImpl implements QueryManager {
 
     container.removeListener(subscription);
     if (container.listeners.isEmpty) {
-      world.emit(QueryContainerDisposedEvent(queryKey: container.query.key, reason: 'No Listeners'));
+      world.emit(
+        QueryContainerDisposedEvent(
+          queryKey: container.query.key,
+          reason: 'No Listeners',
+        ),
+      );
       unawaited(container.dispose());
       remove(container.query);
     }
@@ -117,7 +137,9 @@ final class QueryManagerImpl implements QueryManager {
   @override
   Future<void> destroy() async {
     registry.items
-        .expand((container) => container.listeners.cast<QuerySubscription<dynamic>>())
+        .expand(
+          (container) => container.listeners.cast<QuerySubscription<dynamic>>(),
+        )
         .toList()
         .forEach(unsubscribe);
   }

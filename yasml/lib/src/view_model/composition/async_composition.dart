@@ -39,7 +39,11 @@ abstract base class AsyncComposition<T> extends Composition<AsyncValue<T>> {
   }
 
   @override
-  void execute(covariant AsyncComposer composer, ValueChanged<AsyncValue<T>> setState, VoidCallback setSettled) {
+  void execute(
+    covariant AsyncComposer composer,
+    ValueChanged<AsyncValue<T>> setState,
+    VoidCallback setSettled,
+  ) {
     final future = compose(composer);
     unawaited(
       future
@@ -47,7 +51,12 @@ abstract base class AsyncComposition<T> extends Composition<AsyncValue<T>> {
             setState(AsyncData(value));
           })
           .onError((error, stackTrace) {
-            setState(AsyncError(error ?? Exception('unknown error'), stackTrace: stackTrace));
+            setState(
+              AsyncError(
+                error ?? Exception('unknown error'),
+                stackTrace: stackTrace,
+              ),
+            );
           })
           .whenComplete(() {
             setSettled();

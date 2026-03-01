@@ -34,7 +34,12 @@ base class RankingsStreamQuery extends StreamQuery<List<RankEntry>> {
     yield [
       RankEntry(playerId: 'player_456', playerName: 'Alice', rank: 1, wins: 50),
       RankEntry(playerId: 'player_123', playerName: 'Bob', rank: 2, wins: 15),
-      RankEntry(playerId: 'player_789', playerName: 'Charlie', rank: 3, wins: 10),
+      RankEntry(
+        playerId: 'player_789',
+        playerName: 'Charlie',
+        rank: 3,
+        wins: 10,
+      ),
     ];
   }
 }

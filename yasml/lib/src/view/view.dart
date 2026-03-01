@@ -16,7 +16,8 @@ import 'package:yasml/src/world/world.dart';
 ///     After this future completes, the composition will be refreshed to reflect the changes made by the mutation.
 ///     The world is guaranteed to be in a settled state when the future completes,
 ///     which means that all the queries that are affected by the mutation have been refetched and their state has been updated.
-typedef Notifier<M extends Mutation> = ({Future<void> Function() refresh, MutationRunner<M> runMutation});
+typedef Notifier<M extends Mutation> =
+    ({Future<void> Function() refresh, MutationRunner<M> runMutation});
 
 /// A base class for view widgets. It handles the common logic of subscribing to the [Composition] and running [Mutation]s.
 /// It also defines the build method that will be called to build the widget based on the composition state and the notifier.
@@ -24,7 +25,12 @@ typedef Notifier<M extends Mutation> = ({Future<void> Function() refresh, Mutati
 /// it reactively updates the widget when the composition state changes and provides
 ///  a [Notifier] to the build method that can be used to refresh the composition or run mutations.
 @immutable
-abstract base class ViewWidget<T, C extends Composition<T>, M extends Mutation<C>> extends StatefulWidget {
+abstract base class ViewWidget<
+  T,
+  C extends Composition<T>,
+  M extends Mutation<C>
+>
+    extends StatefulWidget {
   /// @nodoc
   const ViewWidget({required this.world, super.key});
 
@@ -55,7 +61,8 @@ abstract base class ViewWidget<T, C extends Composition<T>, M extends Mutation<C
 }
 
 /// The state of the [ViewWidget]. It handles the subscription to the [Composition] and runs the mutations when needed.
-class ViewWidgetState<T, C extends Composition<T>, M extends Mutation<C>> extends State<ViewWidget<T, C, M>> {
+class ViewWidgetState<T, C extends Composition<T>, M extends Mutation<C>>
+    extends State<ViewWidget<T, C, M>> {
   /// the subscription to the composition. It is used to get the current state of the composition
   ///  and update the widget when it changes.
   late CompositionSubscription<T> compositionSubscription;
@@ -63,7 +70,10 @@ class ViewWidgetState<T, C extends Composition<T>, M extends Mutation<C>> extend
   @override
   void initState() {
     super.initState();
-    compositionSubscription = widget.world.compositionManager.subscribe(widget.composition, this);
+    compositionSubscription = widget.world.compositionManager.subscribe(
+      widget.composition,
+      this,
+    );
   }
 
   @override
@@ -74,10 +84,14 @@ class ViewWidgetState<T, C extends Composition<T>, M extends Mutation<C>> extend
 
   @override
   void didUpdateWidget(covariant ViewWidget<T, C, M> oldWidget) {
-    if (widget.composition != oldWidget.composition || widget.world != oldWidget.world) {
+    if (widget.composition != oldWidget.composition ||
+        widget.world != oldWidget.world) {
       oldWidget.world.compositionManager.unsubscribe(compositionSubscription);
 
-      compositionSubscription = widget.world.compositionManager.subscribe(widget.composition, this);
+      compositionSubscription = widget.world.compositionManager.subscribe(
+        widget.composition,
+        this,
+      );
     }
 
     super.didUpdateWidget(oldWidget);
@@ -90,13 +104,21 @@ class ViewWidgetState<T, C extends Composition<T>, M extends Mutation<C>> extend
   }
 
   @override
-  Widget build(BuildContext context) => widget.build(context, compositionSubscription.compositionContainer.state, (
-    refresh: () => widget.world.compositionManager.refresh(widget.composition),
-    runMutation: _runMutation,
-  ));
+  Widget build(BuildContext context) => widget.build(
+    context,
+    compositionSubscription.compositionContainer.state,
+    (
+      refresh:
+          () => widget.world.compositionManager.refresh(widget.composition),
+      runMutation: _runMutation,
+    ),
+  );
 
   Future<R> _runMutation<R>(MutationDefinition<M, R> definition) async {
-    final mutationContainer = MutationContainer(world: widget.world, mutationConstructor: widget.mutationConstructor);
+    final mutationContainer = MutationContainer(
+      world: widget.world,
+      mutationConstructor: widget.mutationConstructor,
+    );
     final result = await mutationContainer.runMutation(definition);
     return result;
   }

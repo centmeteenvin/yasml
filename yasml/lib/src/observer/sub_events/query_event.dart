@@ -3,7 +3,8 @@ part of '../events.dart';
 /// Events related to the execution and lifecycle of queries. These events are emitted by the [QueryManager]
 sealed class QueryEvent extends Event {
   /// @nodoc
-  QueryEvent({required this.queryKey}) : super(componentName: 'Query-$queryKey');
+  QueryEvent({required this.queryKey})
+    : super(componentName: 'Query-$queryKey');
 
   /// [Query.key] of the query that is the source of the event
   final String queryKey;
@@ -32,7 +33,10 @@ final class QueryContainerDisposedEvent extends QueryEvent {
 /// Specific event for the addition of a new listener to a query container.
 final class QueryContainerNewListenerEvent extends QueryEvent {
   /// @nodoc
-  QueryContainerNewListenerEvent({required super.queryKey, required this.queryListenableType});
+  QueryContainerNewListenerEvent({
+    required super.queryKey,
+    required this.queryListenableType,
+  });
 
   /// The type of the listener that was added. It can be used to differentiate between different
   /// types of listeners, such as compositions and mutations.
@@ -42,7 +46,10 @@ final class QueryContainerNewListenerEvent extends QueryEvent {
 /// Specific event for the removal of a listener from a query container.
 final class QueryContainerListenerRemovedEvent extends QueryEvent {
   /// @nodoc
-  QueryContainerListenerRemovedEvent({required super.queryKey, required this.queryListenableType});
+  QueryContainerListenerRemovedEvent({
+    required super.queryKey,
+    required this.queryListenableType,
+  });
 
   /// The type of the listener that was removed. It can be used to differentiate between different
   /// types of listeners, such as compositions and mutations.

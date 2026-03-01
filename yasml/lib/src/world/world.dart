@@ -15,7 +15,10 @@ import 'package:yasml/src/world/query_manager.dart';
 ///
 ///  Get started using the [World.create] factory constructor and passing the desired plugins and observers
 abstract interface class World {
-  factory World.create({required List<WorldPlugin> plugins, required List<Observer> observers}) = WorldImpl;
+  factory World.create({
+    required List<WorldPlugin> plugins,
+    required List<Observer> observers,
+  }) = WorldImpl;
 
   /// A Future that completes when no more queries or composition are executing
   /// If the world is already settled, calling this will return a resolved Future
@@ -74,10 +77,12 @@ final class WorldImpl implements World {
   @override
   final List<Observer> observers;
 
-  final StreamController<void> _settledController = StreamController.broadcast();
+  final StreamController<void> _settledController =
+      StreamController.broadcast();
 
   /// Returns true if all queries and compositions in the world are settled, false otherwise.
-  bool get isSettled => queryManager.allSettled && compositionManager.allSettled;
+  bool get isSettled =>
+      queryManager.allSettled && compositionManager.allSettled;
 
   @override
   Future<void> get settled {

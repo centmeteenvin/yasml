@@ -22,7 +22,11 @@ abstract base class Composition<T> implements RegisitryKey<String> {
 
   /// The method that will be called to execute the composition.
   ///  It should call the composer to watch the queries and set the state of the composition using the setState callback.
-  void execute(Composer composer, ValueChanged<T> setState, VoidCallback setSettled);
+  void execute(
+    Composer composer,
+    ValueChanged<T> setState,
+    VoidCallback setSettled,
+  );
 
   /// The method that will be called to get the initial value of the composition.
   /// It should return the initial value of the composition.

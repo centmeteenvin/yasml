@@ -1,0 +1,166 @@
+# Publishes a new version of yasml to pub.dev.
+#
+# Triggered manually via the Actions UI with a version bump selector.
+# Steps: bump version → generate changelog → validate → publish → push → release.
+#
+# The "publish before push" pattern ensures that if publishing fails,
+# the remote repository remains untouched — no orphaned tags or commits.
+
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      dry_run:
+        description: 'Dry run (skip publish and push)'
+        required: true
+        type: boolean
+        default: true
+
+# Never cancel a release mid-flight. If triggered twice,
+# the second run queues until the first completes.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write    # push commits/tags, create GitHub Release
+  id-token: write    # OIDC token for pub.dev authentication
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    # When dry_run is false, require approval via the pub.dev environment.
+    # When dry_run is true, no environment gate — runs immediately.
+    environment: ${{ inputs.dry_run == false && 'pub.dev' || '' }}
+    steps:
+      # Full history is required for git-cliff to walk tags and generate
+      # an accurate changelog across all versions.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+        working-directory: yasml
+
+      # ── Version bump ────────────────────────────────────────────
+      - name: Bump version
+        id: bump
+        run: |
+          CURRENT=$(grep '^version:' yasml/pubspec.yaml | sed 's/version: *//')
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+
+          case "${{ inputs.bump }}" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+          esac
+
+          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          sed -i "s/^version: .*/version: ${NEW_VERSION}/" yasml/pubspec.yaml
+
+          echo "old_version=$CURRENT" >> "$GITHUB_OUTPUT"
+          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "new_tag=v${NEW_VERSION}" >> "$GITHUB_OUTPUT"
+
+          echo "### Version bump" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **From:** $CURRENT" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **To:** $NEW_VERSION" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Bump type:** ${{ inputs.bump }}" >> "$GITHUB_STEP_SUMMARY"
+
+      # ── Changelog generation ────────────────────────────────────
+      # Generate the full CHANGELOG.md (all versions) for the package.
+      - name: Generate CHANGELOG.md
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --tag ${{ steps.bump.outputs.new_tag }} --output yasml/CHANGELOG.md
+        env:
+          GITHUB_REPO: ${{ github.repository }}
+
+      # Generate release notes (new version only) for the GitHub Release.
+      - name: Generate release notes
+        id: release_notes
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --unreleased --tag ${{ steps.bump.outputs.new_tag }} --strip header
+        env:
+          GITHUB_REPO: ${{ github.repository }}
+
+      # ── Validation ──────────────────────────────────────────────
+      - name: Validate package (dry-run)
+        run: dart pub publish --dry-run
+        working-directory: yasml
+
+      # ── Commit (local only — not pushed yet) ───────────────────
+      - name: Commit release
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add yasml/pubspec.yaml yasml/CHANGELOG.md
+          git commit -m "chore(yasml): release ${{ steps.bump.outputs.new_version }}"
+          git tag "${{ steps.bump.outputs.new_tag }}"
+
+      # ── Publish (irreversible — remote still untouched) ────────
+      - name: Publish to pub.dev
+        if: inputs.dry_run == false
+        run: dart pub publish --force
+        working-directory: yasml
+
+      # ── Push (only after successful publish) ───────────────────
+      - name: Push commit and tag
+        if: inputs.dry_run == false
+        run: |
+          git push origin HEAD:main
+          git push origin "${{ steps.bump.outputs.new_tag }}"
+
+      # ── GitHub Release ─────────────────────────────────────────
+      - name: Create GitHub Release
+        if: inputs.dry_run == false
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "${{ steps.bump.outputs.new_tag }}"
+          --title "${{ steps.bump.outputs.new_tag }}"
+          --notes-file "${{ steps.release_notes.outputs.changelog }}"
+
+      # ── Dry-run summary ────────────────────────────────────────
+      - name: Dry-run summary
+        if: inputs.dry_run == true
+        run: |
+          echo "## Dry Run Complete" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "No changes were published or pushed." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "### What would happen" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Version:** ${{ steps.bump.outputs.old_version }} → ${{ steps.bump.outputs.new_version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Tag:** ${{ steps.bump.outputs.new_tag }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Publish to pub.dev" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Push commit and tag to main" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Create GitHub Release" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Generated CHANGELOG.md" >> "$GITHUB_STEP_SUMMARY"
+          echo '```markdown' >> "$GITHUB_STEP_SUMMARY"
+          cat yasml/CHANGELOG.md >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Release notes" >> "$GITHUB_STEP_SUMMARY"
+          echo '```markdown' >> "$GITHUB_STEP_SUMMARY"
+          cat "${{ steps.release_notes.outputs.changelog }}" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

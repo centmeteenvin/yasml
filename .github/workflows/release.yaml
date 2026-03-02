@@ -47,11 +47,20 @@ jobs:
       new_tag: ${{ steps.bump.outputs.new_tag }}
       old_version: ${{ steps.bump.outputs.old_version }}
     steps:
+      # Generate a token from the GitHub App so pushes bypass branch protection.
+      - name: Generate app token
+        id: app_token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
       # Full history is required for git-cliff to walk tags and generate
       # an accurate changelog across all versions.
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ steps.app_token.outputs.token }}
 
       - uses: subosito/flutter-action@v2
         with:

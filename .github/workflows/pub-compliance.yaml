@@ -77,6 +77,8 @@ jobs:
       # controls the exit code (and therefore the check status).
       - name: Run pana analysis
         id: pana
+        env:
+          PANA_ANALYSIS_INCLUDES: '1'
         run: |
           set +e
           dart pub global run pana --exit-code-threshold 20 . 2>&1 | tee pana-output.txt
@@ -90,7 +92,6 @@ jobs:
 
           # Build the PR comment body.
           {
-            echo '<!-- pana-report -->'
             echo '## 📊 Pana Analysis Report'
             echo ''
             cat pana-report.md
@@ -106,22 +107,13 @@ jobs:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
-      - name: Find existing pana comment
-        uses: peter-evans/find-comment@v3
-        id: find_comment
-        with:
-          token: ${{ steps.app_token.outputs.token }}
-          issue-number: ${{ github.event.pull_request.number }}
-          body-includes: '<!-- pana-report -->'
-
       - name: Post pana report
-        uses: peter-evans/create-or-update-comment@v4
+        uses: marocchino/sticky-pull-request-comment@v2
         with:
-          token: ${{ steps.app_token.outputs.token }}
-          issue-number: ${{ github.event.pull_request.number }}
-          comment-id: ${{ steps.find_comment.outputs.comment-id }}
-          body-path: yasml/pana-comment.md
-          edit-mode: replace
+          GITHUB_TOKEN: ${{ steps.app_token.outputs.token }}
+          header: pana-report
+          recreate: true
+          path: yasml/pana-comment.md
 
       - name: Fail if pana threshold was exceeded
         if: steps.pana.outputs.exit_code != '0'

@@ -17,9 +17,9 @@ on:
         required: true
         type: string
 
-concurrency:
-  group: release
-  cancel-in-progress: false
+# No concurrency block here — this workflow is only called from
+# release-dry-run.yaml, which already holds the 'release' concurrency
+# group. Duplicating it here causes a deadlock.
 
 jobs:
   tag:

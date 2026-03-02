@@ -2,6 +2,18 @@
 
 All notable changes to the **yasml** package are documented in this file.
 
+## [0.3.1] - 2026-03-02
+
+### Documentation
+
+- **yasml:** Replace counter example with async todo list ([d0a3888](https://github.com/centmeteenvin/yasml/commit/d0a3888d77bc4125a6ed45be8834e2e560576a7a))
+
+### Styling
+
+- **yasml:** Formatted file ([9c3bc43](https://github.com/centmeteenvin/yasml/commit/9c3bc4320373f9ac56019096d4dbe5cd4c210547))
+- **yasml:** Configure 120-char page width and fix analysis_options ([fd89689](https://github.com/centmeteenvin/yasml/commit/fd89689a5ba2ed90359b270c44a7e1ef8c7cd37d))
+- **yasml:** Formatted example file ([09271ad](https://github.com/centmeteenvin/yasml/commit/09271add17e53f3a54837c780299c7f1f3fd4602))
+
 ## [0.3.0] - 2026-03-02
 
 ### Documentation

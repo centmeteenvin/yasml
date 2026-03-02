@@ -49,25 +49,11 @@ jobs:
       fail-fast: false
 
     steps:
-      # Clone the full repository so the workspace resolution
-      # in pubspec.yaml can find sibling packages.
       - uses: actions/checkout@v4
 
-      # Install the specific Flutter SDK version from the matrix.
-      # Each version is tested in its own parallel job.
-      - uses: subosito/flutter-action@v2
+      - uses: ./.github/actions/setup-flutter
         with:
           flutter-version: ${{ matrix.flutter-version }}
-          # Cache the Flutter SDK and pub dependencies between runs.
-          # Dramatically speeds up subsequent CI runs on the same version.
-          cache: true
-
-      # Resolve dependencies. No --enforce-lockfile because:
-      # 1. yasml is a library — lockfiles shouldn't be committed for libraries,
-      #    since consumers resolve their own dependency versions.
-      # 2. Different Flutter/Dart SDKs resolve different versions, so a single
-      #    lockfile can't be valid across the entire matrix.
-      - run: flutter pub get
 
       # Static analysis catches lint violations, type errors, and
       # deprecated API usage before any code runs.

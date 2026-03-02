@@ -1,6 +1,6 @@
 # Composite action: install Flutter SDK and resolve dependencies.
 #
-# Centralises the two-step setup sequence that every release workflow needs.
+# Centralises the two-step setup sequence that every workflow needs.
 # Always uses subosito/flutter-action (includes both Flutter and Dart SDKs).
 #
 # Note: the caller must checkout the repository BEFORE using this action,
@@ -9,12 +9,23 @@
 name: Setup Flutter
 description: Install Flutter SDK and run flutter pub get
 
+inputs:
+  flutter-version:
+    description: Pin a specific Flutter version (e.g. 3.41.2). When set, channel is ignored.
+    required: false
+    default: ''
+  channel:
+    description: Flutter release channel (used only when flutter-version is empty)
+    required: false
+    default: stable
+
 runs:
   using: composite
   steps:
     - uses: subosito/flutter-action@v2
       with:
-        channel: stable
+        flutter-version: ${{ inputs.flutter-version }}
+        channel: ${{ inputs.flutter-version == '' && inputs.channel || '' }}
         cache: true
 
     - name: Resolve dependencies

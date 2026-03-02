@@ -19,7 +19,7 @@ The type system enforces the architecture: if it compiles, the data flow is corr
 
 ### Table of contents
 
-- [Quick start — a counter in five pieces](#quick-start--a-counter-in-five-pieces)
+- [Quick start — a todo list in five pieces](#quick-start--a-todo-list-in-five-pieces)
 - [The reactive loop](#the-reactive-loop)
 - [Keys & identity](#keys--identity)
 - [Parameterized queries](#parameterized-queries)
@@ -35,56 +35,76 @@ The type system enforces the architecture: if it compiles, the data flow is corr
 
 ---
 
-## Quick start — a counter in five pieces
+## Quick start — a todo list in five pieces
 
-The smallest useful yasml app has exactly five moving parts: a **Query**, a **Command**, a **Composition**, a **Mutation**, and a **View**.
+Every yasml app has exactly five moving parts: a **Query**, a **Command**, a **Composition**, a **Mutation**, and a **View**. This example fetches todos from a REST API and lets the user toggle completion — enough to see the full reactive loop in action.
+
+```dart
+// A simple model for the example.
+class Todo {
+  const Todo({required this.id, required this.title, required this.completed});
+
+  factory Todo.fromJson(Map<String, dynamic> json) => Todo(
+    id: json['id'] as int,
+    title: json['title'] as String,
+    completed: json['completed'] as bool,
+  );
+
+  final int id;
+  final String title;
+  final bool completed;
+}
+
+final Dio dio = Dio(BaseOptions(baseUrl: 'https://jsonplaceholder.typicode.com'));
+```
 
 ### 1. Query — where does the data live?
 
 ```dart
-int count = 0; // the source of truth (a database, an API, a variable — anything)
-
-final countQuery = SynchronousQuery.create(
-  (world) => count,
-  key: 'CountQuery',
+final todosQuery = FutureQuery<List<Todo>>.create(
+  (world) async {
+    final response = await dio.get<List<dynamic>>('/todos?_limit=10');
+    return response.data!
+        .map((dynamic e) => Todo.fromJson(e as Map<String, dynamic>))
+        .toList();
+  },
+  key: 'TodosQuery',
 );
 ```
 
-`SynchronousQuery.create` takes a function `T Function(World)` and a cache key. The function says *what* to fetch — in this case, the current count. The key uniquely identifies this query for caching and invalidation.
+`FutureQuery.create` takes a function `Future<T> Function(World)` and a cache key. The function says *what* to fetch — in this case, ten todos from a REST API. The key uniquely identifies this query for caching and invalidation. Because the data is async, the composition state will be wrapped in `AsyncValue<T>`.
 
 ### 2. Command — how does the data change?
 
 ```dart
-Command<void> updateCount(int newValue) => Command.create(
-  (world) { count = newValue; },
-  (_) => [countQuery],
+Command<void> toggleTodo(Todo todo) => Command.create(
+  (world) async {
+    await dio.patch<void>('/todos/${todo.id}', data: {'completed': !todo.completed});
+  },
+  (_) => [todosQuery],
 );
 ```
 
-`updateCount` is a function that returns a new `Command`. The first argument is the execute function (the side-effect), the second declares which queries the command invalidates. After execution, the world automatically refetches every listed query.
+`toggleTodo` is a function that returns a new `Command`. The first argument is the execute function (the side-effect — a PATCH request), the second declares which queries the command invalidates. After execution, the world automatically refetches every listed query, so the todo list updates with the new completion state.
 
 ### 3. Composition — what does the view need?
 
 ```dart
-final countComposition = SynchronousComposition.create(
-  (composer) => composer.watch(countQuery),
-  key: 'CountComposition',
+final todosComposition = AsyncComposition<List<Todo>>.create(
+  (composer) => composer.watchFuture(todosQuery),
+  key: 'TodosComposition',
 );
 ```
 
-`SynchronousComposition.create` watches one or more queries and projects them into view-model state. When any watched query is invalidated, the composition re-runs automatically.
+`AsyncComposition.create` watches one or more async queries and projects them into view-model state. When any watched query is invalidated, the composition re-runs automatically. `watchFuture` subscribes to a `FutureQuery` and surfaces its `AsyncValue<T>` lifecycle.
 
 ### 4. Mutation — what can the user do?
 
 ```dart
-base class CountMutation extends Mutation<SynchronousComposition<int>> {
-  const CountMutation({required super.commander});
+base class TodosMutation extends Mutation<AsyncComposition<List<Todo>>> {
+  const TodosMutation({required super.commander});
 
-  Future<void> increment(int current) =>
-      commander.dispatch(updateCount(current + 1));
-
-  Future<void> reset() =>
-      commander.dispatch(updateCount(0));
+  Future<void> toggle(Todo todo) => commander.dispatch(toggleTodo(todo));
 }
 ```
 
@@ -93,46 +113,50 @@ Mutations are the **only** way the UI triggers state changes. They are always cl
 ### 5. View — put it on screen
 
 ```dart
-base class SyncCountView
-    extends ViewWidget<int, SynchronousComposition<int>, CountMutation> {
-  const SyncCountView({super.key, required super.world});
+base class TodosView
+    extends ViewWidget<AsyncValue<List<Todo>>, AsyncComposition<List<Todo>>, TodosMutation> {
+  const TodosView({required super.world, super.key});
 
   @override
-  SynchronousComposition<int> get composition => countComposition;
+  AsyncComposition<List<Todo>> get composition => todosComposition;
 
   @override
-  MutationConstructor<CountMutation> get mutationConstructor =>
-      (commander) => CountMutation(commander: commander);
+  MutationConstructor<TodosMutation> get mutationConstructor =>
+      (commander) => TodosMutation(commander: commander);
 
   @override
-  Widget build(BuildContext context, int current, Notifier<CountMutation> notifier) {
-    return Scaffold(
-      body: Center(child: Text(current.toString())),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        spacing: 12,
-        children: [
-          FloatingActionButton(
-            onPressed: () => notifier.runMutation((m) => m.increment(current)),
-            child: Icon(Icons.plus_one),
-          ),
-          FloatingActionButton(
-            onPressed: () => notifier.runMutation((m) => m.reset()),
-            child: Icon(Icons.restore),
-          ),
-        ],
+  Widget build(
+    BuildContext context,
+    AsyncValue<List<Todo>> state,
+    Notifier<TodosMutation> notifier,
+  ) {
+    return switch (state) {
+      AsyncLoading() => const Center(child: CircularProgressIndicator()),
+      AsyncError(:final error) => Center(child: Text('Error: $error')),
+      AsyncData(:final data) => ListView.builder(
+        itemCount: data.length,
+        itemBuilder: (context, index) {
+          final todo = data[index];
+          return CheckboxListTile(
+            value: todo.completed,
+            title: Text(todo.title),
+            onChanged: (_) => notifier.runMutation((m) => m.toggle(todo)),
+          );
+        },
       ),
-    );
+    };
   }
 }
 ```
 
 `ViewWidget<T, C, M>` binds three types together:
-- `T` — the composition state type (`int`)
-- `C` — the composition (`SynchronousComposition<int>`)
-- `M` — the mutation (`CountMutation`)
+- `T` — the composition state type (`AsyncValue<List<Todo>>`)
+- `C` — the composition (`AsyncComposition<List<Todo>>`)
+- `M` — the mutation (`TodosMutation`)
 
 Get any of these wrong and the compiler rejects the code.
+
+`AsyncValue<T>` is a sealed class with three subtypes — `AsyncLoading`, `AsyncData`, and `AsyncError`. Dart's exhaustive switch ensures you handle every state at compile time.
 
 The `Notifier<M>` record gives you two capabilities:
 - `runMutation` — execute a mutation and wait for the world to settle
@@ -143,7 +167,7 @@ The `Notifier<M>` record gives you two capabilities:
 ```dart
 void main() {
   final world = World.create(plugins: [], observers: []);
-  runApp(MaterialApp(home: SyncCountView(world: world)));
+  runApp(MaterialApp(home: Scaffold(body: TodosView(world: world))));
 }
 ```
 

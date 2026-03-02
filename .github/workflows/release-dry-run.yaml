@@ -71,9 +71,11 @@ jobs:
           git commit -m "chore(yasml): release ${{ steps.bump.outputs.new_version }}"
 
       - name: Package analysis (pana)
+        env:
+          PANA_ANALYSIS_INCLUDES: '1'
         run: |
           dart pub global activate pana
-          dart pub global run pana --exit-code-threshold 20 .
+          dart pub global run pana --exit-code-threshold 0 .
         working-directory: yasml
 
       - name: Validate package (dry-run publish)

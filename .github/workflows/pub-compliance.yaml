@@ -68,10 +68,8 @@ jobs:
       - name: Install pana
         run: dart pub global activate pana
 
-      # Threshold 20: allows up to 20 points lost out of the maximum.
-      # Absorbs minor issues like transient dependency staleness while
-      # still catching significant regressions in documentation,
-      # platform support, or static analysis.
+      # Threshold 0: requires the maximum pub.dev score — any lost
+      # points will fail the check.
       #
       # Output is captured for the PR comment; the threshold still
       # controls the exit code (and therefore the check status).
@@ -81,7 +79,7 @@ jobs:
           PANA_ANALYSIS_INCLUDES: '1'
         run: |
           set +e
-          dart pub global run pana --exit-code-threshold 20 . 2>&1 | tee pana-output.txt
+          dart pub global run pana --exit-code-threshold 0 . 2>&1 | tee pana-output.txt
           echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
 
       - name: Extract pana report

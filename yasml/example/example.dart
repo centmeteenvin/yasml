@@ -53,16 +53,14 @@ base class TodosMutation extends Mutation<AsyncComposition<List<Todo>>> {
 }
 
 // 5. View — binds composition + mutation to a widget
-base class TodosView
-    extends ViewWidget<AsyncValue<List<Todo>>, AsyncComposition<List<Todo>>, TodosMutation> {
+base class TodosView extends ViewWidget<AsyncValue<List<Todo>>, AsyncComposition<List<Todo>>, TodosMutation> {
   const TodosView({required super.world, super.key});
 
   @override
   AsyncComposition<List<Todo>> get composition => todosComposition;
 
   @override
-  MutationConstructor<TodosMutation> get mutationConstructor =>
-      (commander) => TodosMutation(commander: commander);
+  MutationConstructor<TodosMutation> get mutationConstructor => (commander) => TodosMutation(commander: commander);
 
   @override
   Widget build(BuildContext context, AsyncValue<List<Todo>> state, Notifier<TodosMutation> notifier) {

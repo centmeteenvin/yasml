@@ -31,8 +31,7 @@ abstract interface class Commander {
 /// The runtime of a [Mutation]. Handles the lifecycle of running a mutation by handling the
 /// dispatching of commands while collecting their queries they would invalidate. Then after the user code
 /// the queries will be invalidated and await the settling of the world.
-final class MutationContainer<M extends Mutation>
-    implements Commander, QueryReachable {
+final class MutationContainer<M extends Mutation> implements Commander, QueryReachable {
   ///
   MutationContainer({required this.world, required this.mutationConstructor});
 

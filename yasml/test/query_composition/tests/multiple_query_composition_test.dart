@@ -32,8 +32,7 @@ void main() {
       await world.settled;
 
       // Count queries created so far
-      final createdCount =
-          observer.events.whereType<QueryContainerCreatedEvent>().length;
+      final createdCount = observer.events.whereType<QueryContainerCreatedEvent>().length;
       expect(createdCount, 3, reason: 'First view creates 3 unique queries');
 
       observer.events.clear();
@@ -49,22 +48,19 @@ void main() {
       );
 
       // No new queries should be created!
-      final newCreatedEvents =
-          observer.events.whereType<QueryContainerCreatedEvent>().toList();
+      final newCreatedEvents = observer.events.whereType<QueryContainerCreatedEvent>().toList();
 
       expect(
         newCreatedEvents.isEmpty,
         true,
-        reason:
-            'Second view should reuse existing queries (0 new queries created)',
+        reason: 'Second view should reuse existing queries (0 new queries created)',
       );
 
       // Verify they're using the same containers
       expect(
         sub1Rankings.queryContainer,
         same(sub2Rankings.queryContainer),
-        reason:
-            'Both views should share the same RankingsStreamQuery container',
+        reason: 'Both views should share the same RankingsStreamQuery container',
       );
 
       expect(

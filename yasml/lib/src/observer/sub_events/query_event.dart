@@ -3,8 +3,7 @@ part of '../events.dart';
 /// Events related to the execution and lifecycle of queries. These events are emitted by the [QueryManager]
 sealed class QueryEvent extends Event {
   /// @nodoc
-  QueryEvent({required this.queryKey})
-    : super(componentName: 'Query-$queryKey');
+  QueryEvent({required this.queryKey}) : super(componentName: 'Query-$queryKey');
 
   /// [Query.key] of the query that is the source of the event
   final String queryKey;

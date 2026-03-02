@@ -48,8 +48,7 @@ abstract base class SynchronousComposition<T> extends Composition<T> {
 
 /// A simple implementation of a SynchronousComposition that takes a function and a key
 /// and executes the function to get the composition result.
-final class SynchronousCompositionFunction<T>
-    extends SynchronousComposition<T> {
+final class SynchronousCompositionFunction<T> extends SynchronousComposition<T> {
   /// @nodoc
   const SynchronousCompositionFunction(this.composeFn, {required this.key});
 

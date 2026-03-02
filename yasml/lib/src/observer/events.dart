@@ -2,8 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:yasml/src/model/command.dart';
 import 'package:yasml/src/model/query/query.dart';
 import 'package:yasml/src/view/view.dart';
-import 'package:yasml/src/view_model/composition/async_composition.dart'
-    show AsyncComposer;
+import 'package:yasml/src/view_model/composition/async_composition.dart' show AsyncComposer;
 import 'package:yasml/src/view_model/composition/composition.dart';
 import 'package:yasml/src/view_model/composition/composition_container.dart';
 import 'package:yasml/src/view_model/mutation.dart';

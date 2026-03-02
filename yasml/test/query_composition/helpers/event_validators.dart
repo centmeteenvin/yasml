@@ -61,8 +61,7 @@ class EventSequenceValidator {
     expect(
       _currentIndex,
       events.length,
-      reason:
-          'Expected no more events but found ${remaining.length} remaining: $remaining',
+      reason: 'Expected no more events but found ${remaining.length} remaining: $remaining',
     );
   }
 

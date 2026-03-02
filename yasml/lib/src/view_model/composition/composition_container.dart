@@ -229,8 +229,7 @@ final class CompositionContainer<T> implements AsyncComposer, QueryReachable {
   ///
   /// Returns a Future that resolves when the [CompositionContainer.world] is settled.
   Future<void> refresh() {
-    final subscribedQueries =
-        querySubscriptions.map((sub) => sub.queryContainer.query).toSet();
+    final subscribedQueries = querySubscriptions.map((sub) => sub.queryContainer.query).toSet();
     world.emit(
       CompositionRefreshEvent(
         compositionKey: composition.key,
@@ -247,8 +246,7 @@ final class CompositionContainer<T> implements AsyncComposer, QueryReachable {
 
   @override
   bool operator ==(Object other) {
-    return other is CompositionContainer &&
-        other.composition.key == composition.key;
+    return other is CompositionContainer && other.composition.key == composition.key;
   }
 }
 

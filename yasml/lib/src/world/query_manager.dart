@@ -45,8 +45,7 @@ final class QueryManagerImpl implements QueryManager {
   final WorldImpl world;
 
   /// A Registry that contains a dictionary of [Query] : [QueryContainer].
-  final Registry<String, Query<dynamic>, QueryContainer<dynamic>> registry =
-      Registry();
+  final Registry<String, Query<dynamic>, QueryContainer<dynamic>> registry = Registry();
 
   /// Contains the previous value of [QueryManager.allSettled]
   ///
@@ -54,8 +53,7 @@ final class QueryManagerImpl implements QueryManager {
   Option<bool> previousSettledState = OptionEmpty();
 
   @override
-  bool get allSettled =>
-      registry.items.every((container) => container.isSettled);
+  bool get allSettled => registry.items.every((container) => container.isSettled);
 
   /// Called by the queryContainer any time the query is settled
   /// If the settled state of the query manager changed the world will be notified.

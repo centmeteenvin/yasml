@@ -19,8 +19,7 @@ import 'test_observer.dart';
     true,
     reason: 'World creation should emit events',
   );
-  final worldCreatedEvents =
-      observer.events.whereType<WorldCreatedEvent>().toList();
+  final worldCreatedEvents = observer.events.whereType<WorldCreatedEvent>().toList();
   expect(
     worldCreatedEvents.isNotEmpty,
     true,

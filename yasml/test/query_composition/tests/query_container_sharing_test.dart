@@ -23,10 +23,7 @@ void main() {
       await world.settled;
 
       final createdCount1 =
-          observer.events
-              .whereType<QueryContainerCreatedEvent>()
-              .where((e) => e.queryKey == 'Rankings')
-              .length;
+          observer.events.whereType<QueryContainerCreatedEvent>().where((e) => e.queryKey == 'Rankings').length;
 
       expect(createdCount1, 1, reason: 'First subscription creates the query');
 
@@ -39,10 +36,7 @@ void main() {
       );
 
       final createdCount2 =
-          observer.events
-              .whereType<QueryContainerCreatedEvent>()
-              .where((e) => e.queryKey == 'Rankings')
-              .length;
+          observer.events.whereType<QueryContainerCreatedEvent>().where((e) => e.queryKey == 'Rankings').length;
 
       expect(
         createdCount2,
@@ -71,16 +65,10 @@ void main() {
 
       // Should see one ListenerRemoved event but NO disposal yet
       final firstUnsubEventCount =
-          observer.events
-              .whereType<QueryContainerListenerRemovedEvent>()
-              .where((e) => e.queryKey == 'Rankings')
-              .length;
+          observer.events.whereType<QueryContainerListenerRemovedEvent>().where((e) => e.queryKey == 'Rankings').length;
 
       final firstDisposeEventCount =
-          observer.events
-              .whereType<QueryContainerDisposedEvent>()
-              .where((e) => e.queryKey == 'Rankings')
-              .length;
+          observer.events.whereType<QueryContainerDisposedEvent>().where((e) => e.queryKey == 'Rankings').length;
 
       expect(
         firstUnsubEventCount,
@@ -99,16 +87,10 @@ void main() {
       world.queryManager.unsubscribe(sub2);
 
       final secondUnsubEventCount =
-          observer.events
-              .whereType<QueryContainerListenerRemovedEvent>()
-              .where((e) => e.queryKey == 'Rankings')
-              .length;
+          observer.events.whereType<QueryContainerListenerRemovedEvent>().where((e) => e.queryKey == 'Rankings').length;
 
       final secondDisposeEventCount =
-          observer.events
-              .whereType<QueryContainerDisposedEvent>()
-              .where((e) => e.queryKey == 'Rankings')
-              .length;
+          observer.events.whereType<QueryContainerDisposedEvent>().where((e) => e.queryKey == 'Rankings').length;
 
       expect(
         secondUnsubEventCount,

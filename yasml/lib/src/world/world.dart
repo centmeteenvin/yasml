@@ -77,12 +77,10 @@ final class WorldImpl implements World {
   @override
   final List<Observer> observers;
 
-  final StreamController<void> _settledController =
-      StreamController.broadcast();
+  final StreamController<void> _settledController = StreamController.broadcast();
 
   /// Returns true if all queries and compositions in the world are settled, false otherwise.
-  bool get isSettled =>
-      queryManager.allSettled && compositionManager.allSettled;
+  bool get isSettled => queryManager.allSettled && compositionManager.allSettled;
 
   @override
   Future<void> get settled {

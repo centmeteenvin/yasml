@@ -3,8 +3,7 @@ part of '../events.dart';
 /// All events relating [Mutation]
 sealed class MutationEvent extends Event {
   ///
-  MutationEvent({required this.mutationType})
-    : super(componentName: 'Mutation - $mutationType');
+  MutationEvent({required this.mutationType}) : super(componentName: 'Mutation - $mutationType');
 
   /// The runtimeType of the [Mutation] related to the event
   final Type mutationType;

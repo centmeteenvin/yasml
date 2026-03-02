@@ -42,8 +42,7 @@ void main() {
       );
 
       // 2. QueryContainerNewListenerEvent
-      final newListenerEvent =
-          validator.expectEvent<QueryContainerNewListenerEvent>();
+      final newListenerEvent = validator.expectEvent<QueryContainerNewListenerEvent>();
       QueryEventValidators.validateNewListener(
         newListenerEvent,
         key: 'Rankings',
@@ -78,8 +77,7 @@ void main() {
       world.queryManager.unsubscribe(subscription);
 
       // 6. QueryContainerListenerRemovedEvent
-      final listenerRemovedEvent =
-          validator.skipToEvent<QueryContainerListenerRemovedEvent>();
+      final listenerRemovedEvent = validator.skipToEvent<QueryContainerListenerRemovedEvent>();
       QueryEventValidators.validateListenerRemoved(
         listenerRemovedEvent,
         key: 'Rankings',
@@ -87,8 +85,7 @@ void main() {
       );
 
       // 7. QueryContainerDisposedEvent
-      final disposedEvent =
-          validator.skipToEvent<QueryContainerDisposedEvent>();
+      final disposedEvent = validator.skipToEvent<QueryContainerDisposedEvent>();
       QueryEventValidators.validateContainerDisposed(
         disposedEvent,
         key: 'Rankings',

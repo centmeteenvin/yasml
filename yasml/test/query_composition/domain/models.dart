@@ -25,8 +25,7 @@ class PlayerStats {
           level == other.level;
 
   @override
-  int get hashCode =>
-      playerId.hashCode ^ kills.hashCode ^ wins.hashCode ^ level.hashCode;
+  int get hashCode => playerId.hashCode ^ kills.hashCode ^ wins.hashCode ^ level.hashCode;
 }
 
 /// Represents a single entry in the rankings leaderboard
@@ -53,8 +52,7 @@ class RankEntry {
           wins == other.wins;
 
   @override
-  int get hashCode =>
-      playerId.hashCode ^ playerName.hashCode ^ rank.hashCode ^ wins.hashCode;
+  int get hashCode => playerId.hashCode ^ playerName.hashCode ^ rank.hashCode ^ wins.hashCode;
 }
 
 /// Represents a player achievement

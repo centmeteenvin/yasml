@@ -3,8 +3,7 @@ part of '../events.dart';
 /// Events associated with [Composition] lifecycle
 sealed class CompositionEvent extends Event {
   ///
-  CompositionEvent({required this.compositionKey})
-    : super(componentName: 'Composition - $compositionKey');
+  CompositionEvent({required this.compositionKey}) : super(componentName: 'Composition - $compositionKey');
 
   /// The [Composition.key] that identifies the composition.
   final String compositionKey;

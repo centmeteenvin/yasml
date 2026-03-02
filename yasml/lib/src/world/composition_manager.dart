@@ -45,8 +45,7 @@ final class CompositionManagerImpl implements CompositionManager {
   final WorldImpl world;
 
   /// A Registry that contains a dictionary of [Composition] : [CompositionContainer].
-  final Registry<String, Composition<dynamic>, CompositionContainer<dynamic>>
-  registry = Registry();
+  final Registry<String, Composition<dynamic>, CompositionContainer<dynamic>> registry = Registry();
 
   /// Contains the previous value of [CompositionManager.allSettled]
   ///
@@ -54,8 +53,7 @@ final class CompositionManagerImpl implements CompositionManager {
   Option<bool> previousSettledState = OptionEmpty();
 
   @override
-  bool get allSettled =>
-      registry.items.every((container) => container.isSettled);
+  bool get allSettled => registry.items.every((container) => container.isSettled);
 
   @override
   void notifySettledChange() {
@@ -120,8 +118,7 @@ final class CompositionManagerImpl implements CompositionManager {
 
   @override
   void unsubscribe(CompositionSubscription<dynamic> subscription) {
-    final container =
-        subscription.compositionContainer..removeListener(subscription);
+    final container = subscription.compositionContainer..removeListener(subscription);
 
     if (container.listeners.isEmpty) {
       registry.unregister(container.composition);
@@ -147,8 +144,7 @@ final class CompositionManagerImpl implements CompositionManager {
   Future<void> destroy() async {
     registry.items
         .expand(
-          (container) =>
-              container.listeners.cast<CompositionSubscription<dynamic>>(),
+          (container) => container.listeners.cast<CompositionSubscription<dynamic>>(),
         )
         .toList()
         .forEach(unsubscribe);

@@ -42,8 +42,7 @@ void main() {
       );
 
       // 2. QueryContainerNewListenerEvent
-      final newListenerEvent =
-          validator.expectEvent<QueryContainerNewListenerEvent>();
+      final newListenerEvent = validator.expectEvent<QueryContainerNewListenerEvent>();
       QueryEventValidators.validateNewListener(
         newListenerEvent,
         key: 'Achievements',
@@ -66,12 +65,9 @@ void main() {
             (state) => AsyncValueValidators.isAsyncDataWith<List<Achievement>>(
               state,
               (data) =>
-                  data.length == 4 &&
-                  data.first.title == 'First Blood' &&
-                  data.where((a) => a.unlocked).length == 2,
+                  data.length == 4 && data.first.title == 'First Blood' && data.where((a) => a.unlocked).length == 2,
             ),
-        reason:
-            'Achievements should be AsyncData with correct data and 2 unlocked',
+        reason: 'Achievements should be AsyncData with correct data and 2 unlocked',
       );
 
       // 5. QuerySettledEvent
@@ -82,8 +78,7 @@ void main() {
       world.queryManager.unsubscribe(subscription);
 
       // 6. QueryContainerListenerRemovedEvent
-      final listenerRemovedEvent =
-          validator.skipToEvent<QueryContainerListenerRemovedEvent>();
+      final listenerRemovedEvent = validator.skipToEvent<QueryContainerListenerRemovedEvent>();
       QueryEventValidators.validateListenerRemoved(
         listenerRemovedEvent,
         key: 'Achievements',
@@ -91,8 +86,7 @@ void main() {
       );
 
       // 7. QueryContainerDisposedEvent
-      final disposedEvent =
-          validator.skipToEvent<QueryContainerDisposedEvent>();
+      final disposedEvent = validator.skipToEvent<QueryContainerDisposedEvent>();
       QueryEventValidators.validateContainerDisposed(
         disposedEvent,
         key: 'Achievements',

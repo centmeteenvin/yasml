@@ -66,6 +66,5 @@ final class StreamQueryFunction<T> extends StreamQuery<T> {
   final String key;
 
   @override
-  Stream<T> query(World world, VoidCallback setSettled) =>
-      queryFn(world, setSettled);
+  Stream<T> query(World world, VoidCallback setSettled) => queryFn(world, setSettled);
 }

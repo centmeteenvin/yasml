@@ -1,0 +1,54 @@
+# Composite action: bump the semver version in yasml/pubspec.yaml.
+#
+# Reads the current version, increments by the requested bump type,
+# writes the new version back, and exposes both versions as outputs.
+
+name: Bump Version
+description: Bump the semver version in yasml/pubspec.yaml
+
+inputs:
+  bump:
+    description: 'Version bump type: major, minor, or patch'
+    required: true
+
+outputs:
+  old_version:
+    description: Version before the bump
+    value: ${{ steps.bump.outputs.old_version }}
+  new_version:
+    description: Version after the bump
+    value: ${{ steps.bump.outputs.new_version }}
+  new_tag:
+    description: Git tag for the new version (e.g. v1.2.3)
+    value: ${{ steps.bump.outputs.new_tag }}
+
+runs:
+  using: composite
+  steps:
+    - name: Bump version
+      id: bump
+      shell: bash
+      run: |
+        CURRENT=$(grep '^version:' yasml/pubspec.yaml | sed 's/version: *//')
+        IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+
+        case "${{ inputs.bump }}" in
+          major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+          minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+          patch) PATCH=$((PATCH + 1)) ;;
+        esac
+
+        NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+        sed -i "s/^version: .*/version: ${NEW_VERSION}/" yasml/pubspec.yaml
+
+        echo "old_version=$CURRENT" >> "$GITHUB_OUTPUT"
+        echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+        echo "new_tag=v${NEW_VERSION}" >> "$GITHUB_OUTPUT"
+
+    - name: Summary
+      shell: bash
+      run: |
+        echo "### Version bump" >> "$GITHUB_STEP_SUMMARY"
+        echo "- **From:** ${{ steps.bump.outputs.old_version }}" >> "$GITHUB_STEP_SUMMARY"
+        echo "- **To:** ${{ steps.bump.outputs.new_version }}" >> "$GITHUB_STEP_SUMMARY"
+        echo "- **Bump type:** ${{ inputs.bump }}" >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,63 @@
+# Creates a GitHub Release for a version tag.
+#
+# Triggered automatically when a version tag is pushed, or manually
+# by providing a tag name (useful for recreating a failed release).
+#
+# Release notes are regenerated from git history using git-cliff,
+# so this workflow is fully self-contained and idempotent.
+
+name: GitHub Release
+
+on:
+  push:
+    tags: ['v[0-9]*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to create a release for (e.g. v0.3.0)'
+        required: true
+        type: string
+
+concurrency:
+  group: github-release
+  cancel-in-progress: false
+
+permissions:
+  contents: write # create GitHub Releases
+
+jobs:
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      # Full history needed for git-cliff to generate accurate release notes.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || github.ref }}
+
+      - uses: ./.github/actions/setup-flutter
+
+      - name: Determine tag
+        id: tag
+        run: |
+          if [ -n "${{ inputs.tag }}" ]; then
+            echo "name=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          fi
+        shell: bash
+
+      - uses: ./.github/actions/generate-changelog
+        id: changelog
+        with:
+          new-tag: ${{ steps.tag.outputs.name }}
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "${{ steps.tag.outputs.name }}"
+          --repo "${{ github.repository }}"
+          --title "${{ steps.tag.outputs.name }}"
+          --notes-file "${{ steps.changelog.outputs.release-notes-file }}"

@@ -1,0 +1,23 @@
+# Composite action: install Flutter SDK and resolve dependencies.
+#
+# Centralises the two-step setup sequence that every release workflow needs.
+# Always uses subosito/flutter-action (includes both Flutter and Dart SDKs).
+#
+# Note: the caller must checkout the repository BEFORE using this action,
+# since local composite actions require the repo to be present on the runner.
+
+name: Setup Flutter
+description: Install Flutter SDK and run flutter pub get
+
+runs:
+  using: composite
+  steps:
+    - uses: subosito/flutter-action@v2
+      with:
+        channel: stable
+        cache: true
+
+    - name: Resolve dependencies
+      run: flutter pub get
+      shell: bash
+      working-directory: yasml

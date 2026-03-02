@@ -1,0 +1,38 @@
+# Publishes the yasml package to pub.dev.
+#
+# Triggered automatically when a version tag is pushed, or manually
+# by providing a tag name (useful for retrying a failed publish).
+
+name: Publish to pub.dev
+
+on:
+  push:
+    tags: ['v[0-9]*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to publish (e.g. v0.3.0)'
+        required: true
+        type: string
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    environment: pub.dev
+    permissions:
+      id-token: write # OIDC token for pub.dev authentication
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || github.ref }}
+
+      - uses: ./.github/actions/setup-flutter
+
+      - name: Publish to pub.dev
+        run: dart pub publish --force
+        working-directory: yasml

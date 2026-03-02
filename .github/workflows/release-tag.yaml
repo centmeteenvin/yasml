@@ -1,0 +1,66 @@
+# Commits the version bump + changelog and pushes a version tag.
+#
+# This workflow is ONLY callable via workflow_call (from release-dry-run).
+# It cannot be triggered manually, ensuring the dry-run validation
+# always runs before any tag is created.
+#
+# The commit and tag are pushed atomically in a single git push to
+# avoid windows where the commit exists without its tag.
+
+name: Tag Release
+
+on:
+  workflow_call:
+    inputs:
+      bump:
+        description: 'Version bump type: major, minor, or patch'
+        required: true
+        type: string
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    name: Commit & Tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Generate app token
+        id: app_token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      # Full history needed for git-cliff to generate accurate changelog.
+      # App token needed so the push bypasses branch protection.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app_token.outputs.token }}
+
+      - uses: ./.github/actions/setup-flutter
+
+      - uses: ./.github/actions/bump-version
+        id: bump
+        with:
+          bump: ${{ inputs.bump }}
+
+      - uses: ./.github/actions/generate-changelog
+        with:
+          new-tag: ${{ steps.bump.outputs.new_tag }}
+
+      - name: Commit release
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add yasml/pubspec.yaml yasml/CHANGELOG.md
+          git commit -m "chore(yasml): release ${{ steps.bump.outputs.new_version }}"
+
+      - name: Create and push tag
+        run: |
+          git tag "${{ steps.bump.outputs.new_tag }}"
+          git push origin HEAD:main "${{ steps.bump.outputs.new_tag }}"

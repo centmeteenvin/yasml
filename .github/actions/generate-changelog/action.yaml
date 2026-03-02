@@ -1,0 +1,41 @@
+# Composite action: generate changelog using git-cliff.
+#
+# Produces two outputs:
+#   1. yasml/CHANGELOG.md — full changelog across all versions (committed to repo)
+#   2. A release-notes file — notes for the new version only (used in GitHub Releases)
+#
+# Precondition: the caller must checkout with fetch-depth: 0 (full history).
+# git-cliff needs the complete commit history to walk tags accurately.
+
+name: Generate Changelog
+description: Generate full CHANGELOG.md and release notes using git-cliff
+
+inputs:
+  new-tag:
+    description: The tag to generate changelog for (e.g. v1.2.3)
+    required: true
+
+outputs:
+  release-notes-file:
+    description: Path to the file containing release notes for the new version only
+    value: ${{ steps.release_notes.outputs.changelog }}
+
+runs:
+  using: composite
+  steps:
+    - name: Generate full CHANGELOG.md
+      uses: orhun/git-cliff-action@v4
+      with:
+        config: cliff.toml
+        args: --tag ${{ inputs.new-tag }} --output yasml/CHANGELOG.md
+      env:
+        GITHUB_REPO: ${{ github.repository }}
+
+    - name: Generate release notes
+      id: release_notes
+      uses: orhun/git-cliff-action@v4
+      with:
+        config: cliff.toml
+        args: --unreleased --tag ${{ inputs.new-tag }} --strip header
+      env:
+        GITHUB_REPO: ${{ github.repository }}

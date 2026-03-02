@@ -1,0 +1,117 @@
+# Validates a release without publishing or pushing anything.
+#
+# Triggered manually via the Actions UI. Performs a full dry run:
+# version bump, changelog generation, pana analysis, and publish
+# validation — all without side effects.
+#
+# When auto_tag is enabled (the default), a successful dry run
+# automatically triggers the tag-creation workflow, which in turn
+# triggers publishing and GitHub Release creation.
+
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      auto_tag:
+        description: 'Automatically create tag on success'
+        required: true
+        type: boolean
+        default: true
+
+# Shared concurrency group with release-tag to prevent race conditions.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # ── Dry-run validation ───────────────────────────────────────────
+  dry-run:
+    name: Dry Run
+    runs-on: ubuntu-latest
+    steps:
+      # Full history needed for git-cliff to generate accurate changelog.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-flutter
+
+      - uses: ./.github/actions/bump-version
+        id: bump
+        with:
+          bump: ${{ inputs.bump }}
+
+      - uses: ./.github/actions/generate-changelog
+        id: changelog
+        with:
+          new-tag: ${{ steps.bump.outputs.new_tag }}
+
+      # Commit locally so dart pub publish --dry-run sees a clean
+      # working tree and does not warn about modified files.
+      - name: Local commit (not pushed)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add yasml/pubspec.yaml yasml/CHANGELOG.md
+          git commit -m "chore(yasml): release ${{ steps.bump.outputs.new_version }}"
+
+      - name: Package analysis (pana)
+        run: |
+          dart pub global activate pana
+          dart pub global run pana --exit-code-threshold 20 .
+        working-directory: yasml
+
+      - name: Validate package (dry-run publish)
+        run: dart pub publish --dry-run
+        working-directory: yasml
+
+      - name: Summary
+        run: |
+          echo "## Dry Run Complete" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "All validations passed." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "### What will happen" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ inputs.auto_tag }}" = "true" ]; then
+            echo "The tag workflow will be triggered automatically." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "**auto_tag is disabled** — no tag will be created." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Version:** ${{ steps.bump.outputs.old_version }} → ${{ steps.bump.outputs.new_version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Tag:** ${{ steps.bump.outputs.new_tag }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Commit and push to main" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Publish to pub.dev" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Create GitHub Release" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Generated CHANGELOG.md" >> "$GITHUB_STEP_SUMMARY"
+          echo '```markdown' >> "$GITHUB_STEP_SUMMARY"
+          cat yasml/CHANGELOG.md >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Release notes" >> "$GITHUB_STEP_SUMMARY"
+          echo '```markdown' >> "$GITHUB_STEP_SUMMARY"
+          cat "${{ steps.changelog.outputs.release-notes-file }}" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+  # ── Tag creation (only when auto_tag is enabled) ─────────────────
+  tag:
+    name: Tag Release
+    needs: dry-run
+    if: inputs.auto_tag
+    uses: ./.github/workflows/release-tag.yaml
+    with:
+      bump: ${{ inputs.bump }}
+    secrets: inherit

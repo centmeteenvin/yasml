@@ -32,14 +32,17 @@ concurrency:
   group: release
   cancel-in-progress: false
 
-permissions:
-  contents: read
+# No top-level permissions block — the tag job calls a reusable workflow
+# that needs contents: write, which a top-level restriction would block.
+# Instead, permissions are set per-job.
 
 jobs:
   # ── Dry-run validation ───────────────────────────────────────────
   dry-run:
     name: Dry Run
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       # Full history needed for git-cliff to generate accurate changelog.
       - uses: actions/checkout@v4

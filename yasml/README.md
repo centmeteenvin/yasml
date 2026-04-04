@@ -665,6 +665,7 @@ The class-based API is fully interchangeable with the functional API — both pr
 
 ### AsyncValue\<T\>
 
+
 | Subtype | Properties | Use |
 |---|---|---|
 | `AsyncLoading<T>` | — | Query is fetching |

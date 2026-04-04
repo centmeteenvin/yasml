@@ -2,6 +2,12 @@
 
 All notable changes to the **yasml** package are documented in this file.
 
+## [0.3.2] - 2026-04-04
+
+### Documentation
+
+- **yasml:** Updated README ([e0efe94](https://github.com/centmeteenvin/yasml/commit/e0efe944a5a5fe3dcc8544be254be6d8c4a120e1))
+
 ## [0.3.1] - 2026-03-02
 
 ### Documentation

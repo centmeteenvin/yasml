@@ -10,7 +10,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:pub_semver/pub_semver.dart';
-import 'package:pubspec_parse/pubspec_parse.dart';
 
 import 'src/console.dart';
 import 'src/shell.dart';
@@ -47,7 +46,7 @@ Future<T?> stage<T>(
 Future<void> publish() async {
   Console.banner();
 
-  final current = StateDetector.readPubspecVersion();
+  final current = await StateDetector.readPublishedVersion();
 
   await stage(0, 'Preflight',
     gate: StateDetector.isPreflightReady,
@@ -322,12 +321,14 @@ class StateDetector {
   static const pubspecPath = 'yasml/pubspec.yaml';
   static const dryRunStateFile = '.dart_tool/publish_dry_run';
 
-  static Version readPubspecVersion() {
-    final content = File(pubspecPath).readAsStringSync();
-    final pubspec = Pubspec.parse(content);
-    final version = pubspec.version;
-    if (version == null) throw StateError('No version found in $pubspecPath');
-    return version;
+  static Future<Version> readPublishedVersion() async {
+    final json = await Shell.run(
+      'curl',
+      ['-s', 'https://pub.dev/api/packages/yasml'],
+    );
+    final data = jsonDecode(json) as Map<String, dynamic>;
+    final latest = data['latest'] as Map<String, dynamic>;
+    return Version.parse(latest['version'] as String);
   }
 
   static Future<Version?> latestGitTag() async {

@@ -26,70 +26,76 @@ Future<void> main() async {
   }
 }
 
-// ── Stage runner ─────────────────────────────────────────────────────
-
-/// Runs a pipeline stage. If [gate] returns true the stage is skipped.
-/// Returns the runner's return value, or null when skipped.
-Future<T?> stage<T>(
-  int n,
-  String title, {
-  required Future<bool> Function() gate,
-  required Future<T> Function() runner,
-}) async {
-  Console.step(n, title);
-  if (await gate()) return null;
-  return runner();
-}
-
 // ── Publish pipeline ─────────────────────────────────────────────────
 
 Future<void> publish() async {
   Console.banner();
 
-  final current = await StateDetector.readPublishedVersion();
+  // ── Preflight: tools + repo state + state file ───────────────────
+  Console.step(0, 'Preflight');
+  await ensureTools();
+  await ensureRepoState();
 
-  await stage(0, 'Preflight',
-    gate: StateDetector.isPreflightReady,
-    runner: reportPreflightFailures,
-  );
+  var state = PublishState.load();
 
-  final newVersion = await stage<Version>(1, 'Version selection',
-    gate: () => StateDetector.isVersionBumped(current),
-    runner: () async {
-      final bumpType = Console.promptBumpType(current);
-      final v = current.bump(bumpType);
-      Console.success('Will release $v');
-      return v;
-    },
-  ) ?? current;
+  if (state != null && state.isComplete) {
+    Console.success('Previous release ${state.version} completed all steps');
+    if (!Console.confirm('Start a new release cycle?')) {
+      exit(0);
+    }
+    PublishState.clear();
+    state = null;
+  }
 
-  await stage(2, 'Changelog + commit',
-    gate: () => StateDetector.isReleaseCommitted(newVersion),
-    runner: () => commitRelease(newVersion),
-  );
+  final resumeAfter = state?.lastCompletedStep ?? 0;
+  if (resumeAfter > 0) {
+    Console.info('Resuming release ${state!.version} after step $resumeAfter');
+  }
+  Console.success('Preflight passed');
 
-  await stage(3, 'Dry-run validation',
-    gate: () => StateDetector.isDryRunPassed(newVersion),
-    runner: () => dryRunValidation(newVersion),
-  );
+  // ── Step 1: Version selection ────────────────────────────────────
+  Console.step(1, 'Version selection');
+  late Version version;
+  if (resumeAfter >= 1) {
+    version = state!.version;
+    Console.skip('Version $version already selected');
+  } else {
+    final latestTag = await latestGitTag();
+    if (latestTag == null) {
+      Console.error('No git tags found — cannot determine current version');
+      exit(1);
+    }
+    final bumpType = Console.promptBumpType(latestTag);
+    version = latestTag.bump(bumpType);
+    Console.success('Will release $version');
+    PublishState(version: version, lastCompletedStep: 1).save();
+  }
 
-  await stage(4, 'Push',
-    gate: () => StateDetector.isTagPushed(newVersion.tag),
-    runner: () => pushRelease(newVersion),
-  );
+  // ── Steps 2–5 ───────────────────────────────────────────────────
+  final steps = [
+    (2, 'Changelog + commit', () => commitRelease(version)),
+    (3, 'Dry-run validation', () => dryRunValidation(version)),
+    (4, 'Push', () => pushRelease(version)),
+    (5, 'Publish + GH release', () => publishAndRelease(version)),
+  ];
 
-  await stage(5, 'Publish + GH release',
-    gate: () => StateDetector.isFullyPublished(newVersion),
-    runner: () => publishAndRelease(newVersion),
-  );
+  for (final (n, title, runner) in steps) {
+    Console.step(n, title);
+    if (resumeAfter >= n) {
+      Console.skip('$title — already done');
+      continue;
+    }
+    await runner();
+    PublishState(version: version, lastCompletedStep: n).save();
+  }
 
   stdout.writeln('');
-  Console.success('Release $newVersion complete!');
+  Console.success('Release $version complete!');
 }
 
-// ── Step implementations ─────────────────────────────────────────────
+// ── Preflight checks ─────────────────────────────────────────────────
 
-Future<void> reportPreflightFailures() async {
+Future<void> ensureTools() async {
   final missing = <String>[];
   final instructions = <String, String>{
     'git-cliff': 'Install from: https://git-cliff.org',
@@ -116,7 +122,9 @@ Future<void> reportPreflightFailures() async {
     }
     exit(1);
   }
+}
 
+Future<void> ensureRepoState() async {
   final branch = await Shell.run('git', ['branch', '--show-current']);
   if (branch != 'main') {
     Console.error('Must be on main branch (currently on $branch)');
@@ -144,8 +152,10 @@ Future<void> reportPreflightFailures() async {
   }
 }
 
+// ── Step implementations ─────────────────────────────────────────────
+
 Future<void> commitRelease(Version version) async {
-  final pubspecFile = File('yasml/pubspec.yaml');
+  final pubspecFile = File(PublishState.pubspecPath);
   final pubspecContent = pubspecFile.readAsStringSync();
   pubspecFile.writeAsStringSync(
     pubspecContent.replaceFirst(
@@ -153,7 +163,7 @@ Future<void> commitRelease(Version version) async {
       'version: $version',
     ),
   );
-  Console.success('Bumped yasml/pubspec.yaml to $version');
+  Console.success('Bumped ${PublishState.pubspecPath} to $version');
 
   final cliffExitCode = await Shell.runInherited('git-cliff', [
     '--config', 'cliff.toml',
@@ -177,7 +187,7 @@ Future<void> commitRelease(Version version) async {
 
   await Shell.run(
     'git',
-    ['add', 'yasml/pubspec.yaml', 'yasml/CHANGELOG.md'],
+    ['add', PublishState.pubspecPath, 'yasml/CHANGELOG.md'],
   );
   await Shell.run('git', [
     'commit', '-m', 'chore(yasml): release $version',
@@ -210,9 +220,6 @@ Future<void> dryRunValidation(Version version) async {
     exit(1);
   }
   Console.success('Publish dry-run passed');
-
-  // Write state file so re-runs can skip this step for the same version.
-  StateDetector.writeDryRunState(version);
 }
 
 Future<void> pushRelease(Version version) async {
@@ -239,7 +246,7 @@ Future<void> pushRelease(Version version) async {
 }
 
 Future<void> publishAndRelease(Version version) async {
-  if (!await StateDetector.isPublishedOnPubDev(version)) {
+  if (!await isPublishedOnPubDev(version)) {
     Console.info('Ready to publish $version to pub.dev.');
     if (!Console.confirm('Publish to pub.dev?')) {
       Console.warn('Aborted. Re-run to resume from this step.');
@@ -258,7 +265,7 @@ Future<void> publishAndRelease(Version version) async {
     Console.success('Published $version to pub.dev');
   }
 
-  if (!await StateDetector.ghReleaseExists(version.tag)) {
+  if (!await ghReleaseExists(version.tag)) {
     final releaseNotes = await generateReleaseNotes(version);
 
     final ghExit = await Shell.runInherited('gh', [
@@ -272,6 +279,41 @@ Future<void> publishAndRelease(Version version) async {
     }
     Console.success('Created GitHub release for ${version.tag}');
   }
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────
+
+Future<Version?> latestGitTag() async {
+  try {
+    final tag = await Shell.run(
+      'git',
+      ['describe', '--tags', '--abbrev=0'],
+    );
+    return VersionHelpers.parse(tag);
+  } catch (_) {
+    return null;
+  }
+}
+
+Future<bool> isPublishedOnPubDev(Version version) async {
+  try {
+    final json = await Shell.run(
+      'curl',
+      ['-s', 'https://pub.dev/api/packages/yasml'],
+    );
+    final data = jsonDecode(json) as Map<String, dynamic>;
+    final versions = (data['versions'] as List)
+        .map((v) => (v as Map<String, dynamic>)['version'] as String)
+        .toList();
+    return versions.contains('$version');
+  } catch (_) {
+    return false;
+  }
+}
+
+Future<bool> ghReleaseExists(String tag) async {
+  final code = await Shell.runExitCode('gh', ['release', 'view', tag]);
+  return code == 0;
 }
 
 Future<String> generateReleaseNotes(Version version) async {
@@ -315,135 +357,45 @@ extension VersionHelpers on Version {
   };
 }
 
-// ── StateDetector ────────────────────────────────────────────────────
+// ── PublishState ─────────────────────────────────────────────────────
 
-class StateDetector {
+class PublishState {
+  static const filePath = '.dart_tool/publish_state.json';
   static const pubspecPath = 'yasml/pubspec.yaml';
-  static const dryRunStateFile = '.dart_tool/publish_dry_run';
+  static const totalSteps = 5;
 
-  static Future<Version> readPublishedVersion() async {
-    final json = await Shell.run(
-      'curl',
-      ['-s', 'https://pub.dev/api/packages/yasml'],
-    );
-    final data = jsonDecode(json) as Map<String, dynamic>;
-    final latest = data['latest'] as Map<String, dynamic>;
-    return Version.parse(latest['version'] as String);
-  }
+  final Version version;
+  final int lastCompletedStep;
 
-  static Future<Version?> latestGitTag() async {
+  PublishState({required this.version, required this.lastCompletedStep});
+
+  bool get isComplete => lastCompletedStep >= totalSteps;
+
+  static PublishState? load() {
+    final file = File(filePath);
+    if (!file.existsSync()) return null;
     try {
-      final tag = await Shell.run(
-        'git',
-        ['describe', '--tags', '--abbrev=0'],
+      final data = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+      return PublishState(
+        version: Version.parse(data['version'] as String),
+        lastCompletedStep: data['lastCompletedStep'] as int,
       );
-      return VersionHelpers.parse(tag);
     } catch (_) {
       return null;
     }
   }
 
-  static void writeDryRunState(Version version) {
-    File(dryRunStateFile).writeAsStringSync('$version');
-  }
-
-  // ── Skip gates (return true + log when already done) ───────────────
-
-  static Future<bool> isPreflightReady() async {
-    for (final tool in ['git-cliff', 'gh', 'dart']) {
-      if (await Shell.runExitCode('which', [tool]) != 0) return false;
-    }
-    final globals = await Shell.run(
-      'dart', ['pub', 'global', 'list'],
-      throwOnError: false,
+  void save() {
+    File(filePath).writeAsStringSync(
+      const JsonEncoder.withIndent('  ').convert({
+        'version': '$version',
+        'lastCompletedStep': lastCompletedStep,
+      }),
     );
-    if (!globals.contains('pana')) return false;
-
-    final branch = await Shell.run('git', ['branch', '--show-current']);
-    if (branch != 'main') return false;
-
-    final status = await Shell.run('git', ['status', '--porcelain']);
-    final dirty = status
-        .split('\n')
-        .where((line) => line.trim().isNotEmpty)
-        .where((line) => !line.contains('.dart_tool'));
-    if (dirty.isNotEmpty) return false;
-
-    await Shell.run('git', ['fetch', 'origin', 'main', '--quiet']);
-    final local = await Shell.run('git', ['rev-parse', 'HEAD']);
-    final remote = await Shell.run('git', ['rev-parse', 'origin/main']);
-    if (local != remote) return false;
-
-    Console.skip('All preflight checks passed');
-    return true;
   }
 
-  static Future<bool> isVersionBumped(Version current) async {
-    final latestTag = await latestGitTag();
-    if (latestTag != null && current > latestTag) {
-      Console.skip(
-        'Version already bumped: $current > $latestTag (latest tag)',
-      );
-      return true;
-    }
-    return false;
-  }
-
-  static Future<bool> isReleaseCommitted(Version version) async {
-    final msg = await Shell.run('git', ['log', '-1', '--format=%s']);
-    final committed = msg == 'chore(yasml): release $version';
-    if (committed) Console.skip('Release commit already exists for $version');
-    return committed;
-  }
-
-  static Future<bool> isDryRunPassed(Version version) async {
-    final file = File(dryRunStateFile);
-    if (!file.existsSync()) return false;
-    final stored = file.readAsStringSync().trim();
-    final passed = stored == '$version';
-    if (passed) Console.skip('Dry-run already passed for $version');
-    return passed;
-  }
-
-  static Future<bool> isTagPushed(String tag) async {
-    final output = await Shell.run(
-      'git',
-      ['ls-remote', '--tags', 'origin', tag],
-      throwOnError: false,
-    );
-    final pushed = output.isNotEmpty;
-    if (pushed) Console.skip('Tag $tag already exists on remote');
-    return pushed;
-  }
-
-  static Future<bool> isFullyPublished(Version version) async {
-    final onPubDev = await isPublishedOnPubDev(version);
-    final onGitHub = await ghReleaseExists(version.tag);
-    return onPubDev && onGitHub;
-  }
-
-  static Future<bool> isPublishedOnPubDev(Version version) async {
-    try {
-      final json = await Shell.run(
-        'curl',
-        ['-s', 'https://pub.dev/api/packages/yasml'],
-      );
-      final data = jsonDecode(json) as Map<String, dynamic>;
-      final versions = (data['versions'] as List)
-          .map((v) => (v as Map<String, dynamic>)['version'] as String)
-          .toList();
-      final published = versions.contains('$version');
-      if (published) Console.skip('Version $version already on pub.dev');
-      return published;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  static Future<bool> ghReleaseExists(String tag) async {
-    final code = await Shell.runExitCode('gh', ['release', 'view', tag]);
-    final exists = code == 0;
-    if (exists) Console.skip('GitHub release for $tag already exists');
-    return exists;
+  static void clear() {
+    final file = File(filePath);
+    if (file.existsSync()) file.deleteSync();
   }
 }

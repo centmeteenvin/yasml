@@ -165,6 +165,15 @@ Future<void> commitRelease(Version version) async {
     Console.error('git-cliff failed (exit code $cliffExitCode)');
     exit(1);
   }
+
+  // Verify the new version appears in the changelog.
+  // If git-cliff omitted it, there are no qualifying commits — nothing to release.
+  final changelog = File('yasml/CHANGELOG.md').readAsStringSync();
+  if (!changelog.contains('## [$version]')) {
+    Console.error('No qualifying commits since last release');
+    Console.info('CHANGELOG.md has no entry for $version — nothing to release.');
+    exit(1);
+  }
   Console.success('Generated CHANGELOG.md');
 
   await Shell.run(
